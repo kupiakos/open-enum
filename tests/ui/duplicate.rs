@@ -1,0 +1,33 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+
+extern crate open_enum;
+use open_enum::open_enum;
+
+#[open_enum]
+enum DuplicateVariant {
+    A = 1,
+    B = 2,
+    C = 1,
+}
+
+#[open_enum]
+enum ImplicitDuplicateVariant {
+    A = 0,
+    B = -1,
+    C,
+}
+
+fn main() {}

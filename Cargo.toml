@@ -1,0 +1,22 @@
+[package]
+name = "open-enum"
+version = "0.1.0"
+authors = ["Alyssa Haroldsen <kupiakos@google.com>"]
+description = "An attribute for generating \"open\" fieldless enums, those that accept any integer value, by using a newtype struct and associated constants"
+edition = "2021"
+license-file = "LICENSE"
+repository = "https://github.com/google/open-enum"
+categories = ["no-std", "rust-patterns"]
+keywords = ["enum", "open", "integer", "newtype"]
+include = ["/src", "/LICENSE", "Cargo.toml"]
+
+[features]
+
+[dependencies]
+open-enum-derive = { path = "derive", version = "0.1.0" }
+paste = "1"
+# TODO: consider making this optional - I tried and trybuild started failing
+libc = { version = "0.2" }
+
+[dev-dependencies]
+trybuild = "1"

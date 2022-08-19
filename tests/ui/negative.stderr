@@ -1,0 +1,16 @@
+error[E0601]: `main` function not found in crate `$CRATE`
+  --> tests/ui/negative.rs:24:2
+   |
+24 | }
+   |  ^ consider adding a `main` function to `$DIR/tests/ui/negative.rs`
+
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> tests/ui/negative.rs:23:9
+   |
+23 |     B = -1,
+   |         ^
+   |         |
+   |         cannot apply unary operator `-`
+   |         help: you may have meant the maximum value of `u32`: `u32::MAX`
+   |
+   = note: unsigned values cannot be negated
