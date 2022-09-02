@@ -1,4 +1,4 @@
-# `open_enum`
+# `open-enum`
 
 Rust enums are _closed_, meaning that the integer value distinguishing an enum, its _discriminant_,
 must be one of the variants listed. If the integer value isn't one of those discriminants, it
@@ -10,7 +10,7 @@ the [rules of writing `unsafe` Rust][nomicon].
 
 In constrast, C++ [scoped enumerations][cpp-scoped-enum] are _open_, meaning that the enum is a
 strongly-typed integer that could hold any value, though with a scoped set of well-known values.
-`open_enum` lets you have this in Rust. It turns this enum declaration:
+`open-enum` lets you have this in Rust. It turns this enum declaration:
 
 ``` rust
 #[open_enum]
