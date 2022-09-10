@@ -25,9 +25,9 @@ enum Color {
 
 into a tuple struct with associated constants:
 
-``` rust
-#[derive(PartialEq, Eq)]  // In order to work in `match`
-struct Color(pub u8);
+```rust
+#[derive(PartialEq, Eq)]  // In order to work in `match`.
+struct Color(pub u8);  // Automatic integer type, can be specified.
 
 impl Color {
     pub const Red: Self = Color(0);

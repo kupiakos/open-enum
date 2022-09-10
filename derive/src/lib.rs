@@ -386,9 +386,6 @@ fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Err
     })
 }
 
-/// Constructs an *open* enum from a Rust enum definition.
-///
-/// See the module documentation for more details.
 #[proc_macro_attribute]
 pub fn open_enum(
     attrs: proc_macro::TokenStream,

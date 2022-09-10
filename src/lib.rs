@@ -39,8 +39,8 @@
 //! into a tuple struct with associated constants:
 //!
 //! ```
-//! #[derive(PartialEq, Eq)]  // In order to work in `match`
-//! struct Color(pub u8);
+//! #[derive(PartialEq, Eq)]  // In order to work in `match`.
+//! struct Color(pub u8);  // Automatic integer type, can be specified.
 //!
 //! impl Color {
 //!     pub const Red: Self = Color(0);
@@ -111,8 +111,9 @@
 //! `open_enum` will automatically determine an appropriately sized integer[^its-all-isize] to
 //! represent the enum, if possible[^nonliterals-are-hard]. To choose a specific representation, it's the same
 //! as a regular `enum`: add `#[repr(type)]`.
-//! You can also specify `#[repr(C)]` to choose a C `int`.
+//! You can also specify `#[repr(C)]` to choose a C `int`.[^repr-c-feature][^repr-c-weird]
 //!
+//! If you specify an explicit `repr`, the output struct will be `#[repr(transparent)]`.
 //!
 //! ```
 //! # use open_enum::open_enum;
@@ -143,6 +144,11 @@
 //!
 //! [^nonliterals-are-hard]: This optimization fails if the `enum` declares a non-literal constant expression
 //! as one of its discriminant values, and falls back to `isize`. To avoid this, specify an explicit `repr`.
+//!
+//! [^repr-c-weird]: Note that this might not actually be the correct default `enum` size for C on all platforms,
+//!                  since the [compiler could choose something smaller than `int`](https://stackoverflow.com/a/366026).
+//!
+//! [^repr-c-feature]: This requires either the `std` or `libc_` feature (note the underscore)
 //!
 //! # Aliasing variants
 //! Regular `enum`s cannot have multiple variants with the same discriminant.
@@ -194,6 +200,27 @@
 
 #![no_std]
 
+/// Constructs an *open* enum from a Rust enum definition,
+/// allowing it to represent more than just its listed variants.
+///
+/// See the [crate documentation](crate) for more details.
+///
+/// # Example
+/// ```
+/// # use open_enum::open_enum;
+/// #[open_enum]
+/// #[derive(Debug)]
+/// enum Color {
+///     Red,
+///     Green,
+///     Blue,
+///     Orange,
+///     Black,
+/// }
+///
+/// assert_eq!(Color::Red, Color(0));
+/// assert_eq!(Color(10).0, 10);
+/// ```
 pub use open_enum_derive::open_enum;
 
 /// Utility items only to be used by macros. Do not expect API stability.
