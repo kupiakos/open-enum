@@ -4,14 +4,14 @@ version = "0.2.0"
 authors = ["Alyssa Haroldsen <kupiakos@google.com>"]
 description = "An attribute for generating \"open\" fieldless enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
-license-file = "LICENSE"
+license = "Apache-2.0"
 repository = "https://github.com/kupiakos/open-enum"
 categories = ["no-std", "rust-patterns"]
 keywords = ["enum", "open", "integer", "newtype"]
 include = ["/src", "/LICENSE", "Cargo.toml"]
 
 [features]
-# This is not named libc because it would require "dep:libc"
+# This is not named libc because it would require "dep:libc",
 # which doesn't work with trybuild: https://github.com/dtolnay/trybuild/issues/171.
 libc_ = ["libc", "open-enum-derive/repr_c"]
 std = ["open-enum-derive/repr_c"]
