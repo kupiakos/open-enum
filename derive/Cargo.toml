@@ -13,9 +13,10 @@ include = ["/src", "../LICENSE", "Cargo.toml"]
 proc-macro = true
 
 [features]
+# Enable #[repr(C)] open enums
+repr_c = []
 
 [dependencies]
 syn = { version = "1", features = ["full"] }
 quote = "1"
 proc-macro2 = "1.0.43"
-libc = { version = "0.2" }

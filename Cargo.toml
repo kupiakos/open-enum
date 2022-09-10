@@ -11,6 +11,10 @@ keywords = ["enum", "open", "integer", "newtype"]
 include = ["/src", "/LICENSE", "Cargo.toml"]
 
 [features]
+# This is not named libc because it would require "dep:libc"
+# which doesn't work with trybuild: https://github.com/dtolnay/trybuild/issues/171.
+libc_ = ["libc", "open-enum-derive/repr_c"]
+std = ["open-enum-derive/repr_c"]
 
 # Needed to test #[deny(missing_docs)], which doesn't trigger in unit or integration tests.
 [[bin]]
@@ -19,8 +23,7 @@ path = "src/test-lints.rs"
 
 [dependencies]
 open-enum-derive = { path = "derive", version = "0.2.0" }
-# TODO: consider making this optional - I tried and trybuild started failing
-libc = { version = "0.2" }
+libc = { version = "0.2", optional = true }
 
 [dev-dependencies]
 trybuild = "1"

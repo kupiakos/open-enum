@@ -113,6 +113,7 @@ enum Repr {
     I64,
     Usize,
     Isize,
+    #[cfg(feature = "repr_c")]
     C,
 }
 
@@ -157,6 +158,7 @@ impl Repr {
             Repr::I64 => "i64",
             Repr::Usize => "usize",
             Repr::Isize => "isize",
+            #[cfg(feature = "repr_c")]
             Repr::C => "C",
         }
     }
@@ -167,6 +169,7 @@ impl ToTokens for Repr {
         tokens.extend([match self {
             // Technically speaking, #[repr(C)] on an enum isn't always `c_int`,
             // but those who care can fix it if they need.
+            #[cfg(feature = "repr_c")]
             Repr::C => quote!(::open_enum::__private::c_int),
             x => x.name().parse::<TokenStream>().unwrap(),
         }])
@@ -187,7 +190,15 @@ impl Parse for Repr {
             "u64" => Repr::U64,
             "usize" => Repr::Usize,
             "isize" => Repr::Isize,
+            #[cfg(feature = "repr_c")]
             "C" => Repr::C,
+            #[cfg(not(feature = "repr_c"))]
+            "C" => {
+                return Err(Error::new(
+                    ident.span(),
+                    "#[repr(C)] requires either the `std` or `libc_` feature",
+                ))
+            }
             _ => {
                 return Err(Error::new(
                     ident.span(),

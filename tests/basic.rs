@@ -59,7 +59,6 @@ enum Color {
     Azure,
 }
 
-
 #[test]
 fn values() {
     assert_eq!(Fruit::Apple.0, 0);
@@ -114,6 +113,7 @@ fn other_derive() {
     HasHash(20).hash(&mut hasher);
 }
 
+#[cfg(any(feature = "libc", feature = "std"))]
 #[test]
 fn repr_c() {
     use core::mem::size_of;
@@ -121,12 +121,16 @@ fn repr_c() {
     #[repr(C)]
     #[open_enum]
     enum AnimalSound {
-        Moo, Honk, Bahhh,
+        Moo,
+        Honk,
+        Bahhh,
     }
-    use libc::c_int;
 
     assert_eq!(AnimalSound::Moo.0, 0);
-    assert_eq!(size_of::<AnimalSound>(), size_of::<c_int>());
+    assert_eq!(
+        size_of::<AnimalSound>(),
+        size_of::<open_enum::__private::c_int>()
+    );
 }
 
 #[test]

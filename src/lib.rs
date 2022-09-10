@@ -199,5 +199,12 @@ pub use open_enum_derive::open_enum;
 /// Utility items only to be used by macros. Do not expect API stability.
 #[doc(hidden)]
 pub mod __private {
+    #[cfg(all(feature = "libc", not(feature = "std")))]
     pub use libc::c_int;
+
+    #[cfg(feature = "std")]
+    extern crate std;
+
+    #[cfg(feature = "std")]
+    pub use std::os::raw::c_int;
 }
