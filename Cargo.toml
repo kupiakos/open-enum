@@ -20,3 +20,9 @@ libc = { version = "0.2" }
 
 [dev-dependencies]
 trybuild = "1"
+
+[workspace]
+members = [
+    "derive",
+    "lints",
+]
