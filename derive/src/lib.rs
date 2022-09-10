@@ -265,7 +265,8 @@ fn check_no_alias<'a>(
 
 fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Error> {
     // Does the enum define a `#[repr()]`?
-    let mut struct_attrs: Vec<TokenStream> = Vec::with_capacity(enum_.attrs.len());
+    let mut struct_attrs: Vec<TokenStream> = Vec::with_capacity(enum_.attrs.len() + 5);
+    struct_attrs.push(quote!(#[allow(clippy::exhaustive_structs)]));
 
     if !enum_.generics.params.is_empty() {
         return Err(Error::new(enum_.generics.span(), "enum cannot be generic"));

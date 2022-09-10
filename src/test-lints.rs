@@ -54,4 +54,15 @@ pub mod allow_lint_propagates {
     }
 }
 
+pub mod clippy {
+    // We should pass this, as this is a newtype.
+    #![deny(clippy::exhaustive_structs)]
+
+    #[open_enum::open_enum]
+    pub enum Foo {
+        Bar,
+        Baz,
+    }
+}
+
 fn main() {}
