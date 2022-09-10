@@ -261,6 +261,12 @@ fn check_no_alias_nonliteral<'a>(
     )
 }
 
+fn is_lint_attribute(attr: &syn::Attribute) -> bool {
+    ["allow", "warn", "deny", "forbid"]
+        .into_iter()
+        .any(|s| attr.path.is_ident(s))
+}
+
 fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Error> {
     // Does the enum define a `#[repr()]`?
     let mut explicit_repr: Option<Repr> = None;
@@ -315,6 +321,8 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
         ident, vis, attrs, ..
     } = enum_;
 
+    let mut impl_attrs: Vec<TokenStream> = vec![quote!(#[allow(non_upper_case_globals)])];
+
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
     let mut our_derives = HashSet::new();
     our_derives.insert("PartialEq");
@@ -329,11 +337,13 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
                     our_derives.remove("Eq");
                 }
             }
+        } else if is_lint_attribute(attr) {
+            impl_attrs.push(attr.to_token_stream());
         }
     }
 
-    // Convert to a token stream so we don't unnecessarily parse more.
-    let mut attrs: Vec<_> = attrs
+    // Convert to a token stream to not unnecessarily parse more.
+    let mut struct_attrs: Vec<TokenStream> = attrs
         .into_iter()
         .map(syn::Attribute::into_token_stream)
         .collect();
@@ -341,7 +351,7 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
     // The actual representation of the value.
     let inner_repr = if let Some(explicit_repr) = explicit_repr {
         // If there is an explicit repr, emit #[repr(transparent)].
-        attrs.push(quote!(#[repr(transparent)]));
+        struct_attrs.push(quote!(#[repr(transparent)]));
         explicit_repr
     } else {
         // If there isn't an explicit repr, determine an appropriate sized integer that will fit.
@@ -353,7 +363,7 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
         let our_derives = our_derives
             .into_iter()
             .map(|d| Ident::new(d, Span::call_site()));
-        attrs.push(quote!(#[derive(#(#our_derives),*)]));
+        struct_attrs.push(quote!(#[derive(#(#our_derives),*)]));
     }
 
     let alias_check = if allow_alias {
@@ -377,10 +387,10 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
         });
 
     Ok(quote! {
-        #(#attrs)*
+        #(#struct_attrs)*
         #vis struct #ident(pub #inner_repr);
 
-        #[allow(non_upper_case_globals)]
+        #(#impl_attrs)*
         impl #ident {
             #(
                 #fields

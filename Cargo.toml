@@ -12,6 +12,11 @@ include = ["/src", "/LICENSE", "Cargo.toml"]
 
 [features]
 
+# Needed to test #[deny(missing_docs)], which doesn't trigger in unit or integration tests.
+[[bin]]
+name = "test_lints"
+path = "tests/lints.rs"
+
 [dependencies]
 open-enum-derive = { path = "derive", version = "0.1.0" }
 paste = "1"
@@ -24,5 +29,4 @@ trybuild = "1"
 [workspace]
 members = [
     "derive",
-    "lints",
 ]

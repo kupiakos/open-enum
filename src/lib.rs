@@ -50,7 +50,7 @@
 //!     pub const Black: Self = Color(4);
 //! }
 //! ```
-//! 
+//!
 //! There are clear readability benefits to using field-less `enum`s to represent integer data.
 //! It provides more type safety than a raw integer, the `enum` syntax is consise, and it provides a
 //! set of constants grouped under a type that can have methods.
@@ -137,7 +137,7 @@
 //! Do not depend on this type remaining stable - use an explicit `#[repr]` for stability.
 //!
 //! </pre></div>
-//! 
+//!
 //! [^its-all-isize]: Like regular `enum`s, the declared discriminant for enums without an explicit `repr`
 //! is interpreted as an `isize` regardless of the automatic storage type chosen.
 //!
@@ -322,7 +322,7 @@ pub mod __private {
 
     #[cfg(test)]
     mod tests {
-        use super::{no_duplicates_u8, no_duplicates_i8};
+        use super::{no_duplicates_i8, no_duplicates_u8};
 
         #[test]
         fn test_dupes() {
