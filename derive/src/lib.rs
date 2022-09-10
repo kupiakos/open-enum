@@ -16,17 +16,17 @@ extern crate proc_macro;
 
 use core::ops::RangeInclusive;
 use proc_macro2::{Literal, Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
     parse::Parse, parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Expr, Ident,
-    ItemEnum, Path, Token,
+    ItemEnum, Path, Token, Visibility,
 };
 
 #[derive(Clone)]
 enum Discriminant {
     Literal(i128),
-    Nonliteral { base: Expr, offset: u32 },
+    Nonliteral { base: Box<Expr>, offset: u32 },
 }
 
 impl Discriminant {
@@ -58,7 +58,7 @@ impl Discriminant {
 
         // Nonliteral expression
         Ok(Discriminant::Nonliteral {
-            base: discriminant_expr,
+            base: Box::new(discriminant_expr),
             offset: 0,
         })
     }
@@ -227,12 +227,9 @@ fn autodetect_inner_repr<'a>(variants: impl Iterator<Item = &'a Discriminant>) -
 /// Checks that there are no duplicate discriminant values. If all variants are literals, return an `Err` so we can have
 /// more clear error messages. Otherwise, emit a static check that ensures no duplicates.
 fn check_no_alias<'a>(
-    name: &Ident,
-    repr: Repr,
+    enum_: &ItemEnum,
     variants: impl Iterator<Item = (&'a Ident, &'a Discriminant, Span)> + Clone,
 ) -> syn::Result<TokenStream> {
-    let variant_idents = variants.clone().map(|x| x.0);
-
     // If they're all literals, we can give better error messages by checking at proc macro time.
     let mut values: HashSet<i128> = HashSet::new();
     for (_, variant, span) in variants {
@@ -244,67 +241,34 @@ fn check_no_alias<'a>(
                 ));
             }
         } else {
-            return Ok(check_no_alias_nonliteral(name, repr, variant_idents));
+            return Ok(syn::ItemEnum {
+                ident: format_ident!("_Check{}", enum_.ident),
+                vis: Visibility::Inherited,
+                ..enum_.clone()
+            }
+            .to_token_stream());
         }
     }
     Ok(TokenStream::default())
 }
 
-fn check_no_alias_nonliteral<'a>(
-    name: &Ident,
-    repr: Repr,
-    variants: impl Iterator<Item = &'a Ident>,
-) -> TokenStream {
-    let test_fn = Ident::new(&format!("no_duplicates_{}", repr.name()), Span::call_site());
-    quote!(
-        const _: () = assert!(open_enum::__private:: #test_fn ([ #( #name::#variants .0 ),* ]), "discriminant value assigned more than once");
-    )
-}
-
-fn is_lint_attribute(attr: &syn::Attribute) -> bool {
-    ["allow", "warn", "deny", "forbid"]
-        .into_iter()
-        .any(|s| attr.path.is_ident(s))
-}
-
-fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Error> {
+fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Error> {
     // Does the enum define a `#[repr()]`?
-    let mut explicit_repr: Option<Repr> = None;
-
-    {
-        let mut err = Ok(());
-        enum_.attrs.retain(|attr| {
-            if attr.path.is_ident("repr") {
-                match attr.parse_args() {
-                    Ok(repr) => explicit_repr = Some(repr),
-                    Err(e) => err = Err(e),
-                }
-                false
-            } else if attr.path.is_ident("non_exhaustive") {
-                // technically it's exhaustive if the enum covers the full integer range
-                err = Err(Error::new(attr.path.span(), "`non_exhaustive` cannot be applied to an open enum; it is already non-exhaustive"));
-                false
-            } else {
-                true
-            }
-        });
-        err?;
-    }
+    let mut struct_attrs: Vec<TokenStream> = Vec::with_capacity(enum_.attrs.len());
 
     if !enum_.generics.params.is_empty() {
         return Err(Error::new(enum_.generics.span(), "enum cannot be generic"));
     }
-
     let mut variants = Vec::with_capacity(enum_.variants.len());
     let mut last_field = Discriminant::Literal(-1);
-    for variant in enum_.variants {
+    for variant in &enum_.variants {
         if !matches!(variant.fields, syn::Fields::Unit) {
             return Err(Error::new(variant.span(), "enum cannot contain fields"));
         }
 
-        let (value, value_span) = if let Some((_, discriminant)) = variant.discriminant {
+        let (value, value_span) = if let Some((_, discriminant)) = &variant.discriminant {
             let span = discriminant.span();
-            (Discriminant::new(discriminant)?, span)
+            (Discriminant::new(discriminant.clone())?, span)
         } else {
             last_field = last_field
                 .next_value()
@@ -312,51 +276,64 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
             (last_field.clone(), variant.ident.span())
         };
         last_field = value.clone();
-        variants.push((variant.ident, value, value_span, variant.attrs))
+        variants.push((&variant.ident, value, value_span, &variant.attrs))
     }
-    // The proper repr to type-check against
-    let typecheck_repr: Repr = explicit_repr.unwrap_or(Repr::Isize);
-
-    let syn::ItemEnum {
-        ident, vis, attrs, ..
-    } = enum_;
 
     let mut impl_attrs: Vec<TokenStream> = vec![quote!(#[allow(non_upper_case_globals)])];
+    let mut explicit_repr: Option<Repr> = None;
 
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
     let mut our_derives = HashSet::new();
     our_derives.insert("PartialEq");
     our_derives.insert("Eq");
-    for attr in &attrs {
-        if attr.path.is_ident("derive") {
-            let derives = attr.parse_args_with(Punctuated::<Path, Token![,]>::parse_terminated)?;
-            for derive in derives {
-                if derive.is_ident("PartialEq") {
-                    our_derives.remove("PartialEq");
-                } else if derive.is_ident("Eq") {
-                    our_derives.remove("Eq");
+    for attr in &enum_.attrs {
+        let mut include_in_struct = true;
+        // Turns out `is_ident` does a `to_string` every time
+        match attr.path.to_token_stream().to_string().as_str() {
+            "derive" => {
+                let derives =
+                    attr.parse_args_with(Punctuated::<Path, Token![,]>::parse_terminated)?;
+                for derive in derives {
+                    if derive.is_ident("PartialEq") {
+                        our_derives.remove("PartialEq");
+                    } else if derive.is_ident("Eq") {
+                        our_derives.remove("Eq");
+                    }
                 }
             }
-        } else if is_lint_attribute(attr) {
-            impl_attrs.push(attr.to_token_stream());
+            // Copy linting attribute to the impl.
+            "allow" | "warn" | "deny" | "forbid" => impl_attrs.push(attr.to_token_stream()),
+            "repr" => {
+                assert!(explicit_repr.is_none(), "duplicate explicit repr");
+                explicit_repr = Some(attr.parse_args()?);
+                include_in_struct = false;
+            }
+            "non_exhaustive" => {
+                // technically it's exhaustive if the enum covers the full integer range
+                return Err(Error::new(attr.path.span(), "`non_exhaustive` cannot be applied to an open enum; it is already non-exhaustive"));
+            }
+            _ => {}
+        }
+        if include_in_struct {
+            struct_attrs.push(attr.to_token_stream());
         }
     }
 
-    // Convert to a token stream to not unnecessarily parse more.
-    let mut struct_attrs: Vec<TokenStream> = attrs
-        .into_iter()
-        .map(syn::Attribute::into_token_stream)
-        .collect();
+    // The proper repr to type-check against
+    let typecheck_repr: Repr = explicit_repr.unwrap_or(Repr::Isize);
 
     // The actual representation of the value.
-    let inner_repr = if let Some(explicit_repr) = explicit_repr {
-        // If there is an explicit repr, emit #[repr(transparent)].
-        struct_attrs.push(quote!(#[repr(transparent)]));
-        explicit_repr
-    } else {
-        // If there isn't an explicit repr, determine an appropriate sized integer that will fit.
-        // Interpret all discriminant expressions as isize.
-        autodetect_inner_repr(variants.iter().map(|v| &v.1))
+    let inner_repr = match explicit_repr {
+        Some(explicit_repr) => {
+            // If there is an explicit repr, emit #[repr(transparent)].
+            struct_attrs.push(quote!(#[repr(transparent)]));
+            explicit_repr
+        }
+        None => {
+            // If there isn't an explicit repr, determine an appropriate sized integer that will fit.
+            // Interpret all discriminant expressions as isize.
+            autodetect_inner_repr(variants.iter().map(|v| &v.1))
+        }
     };
 
     if !our_derives.is_empty() {
@@ -369,12 +346,10 @@ fn open_enum_impl(mut enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream,
     let alias_check = if allow_alias {
         TokenStream::default()
     } else {
-        check_no_alias(
-            &ident,
-            inner_repr,
-            variants.iter().map(|(i, v, s, _)| (i, v, *s)),
-        )?
+        check_no_alias(&enum_, variants.iter().map(|(i, v, s, _)| (*i, v, *s)))?
     };
+
+    let syn::ItemEnum { ident, vis, .. } = enum_;
 
     let fields = variants.into_iter()
         .map(|(name, value, value_span, attrs)| {
@@ -419,7 +394,7 @@ pub fn open_enum(
                 attr.span(),
                 &format!(
                     "{attr} is not a recognized open_enum option",
-                    attr = attr.into_token_stream().to_string()
+                    attr = attr.into_token_stream()
                 ),
             )
             .into_compile_error()

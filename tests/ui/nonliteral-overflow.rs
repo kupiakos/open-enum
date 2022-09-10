@@ -12,27 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 extern crate open_enum;
-use open_enum::open_enum;
 
-// This is a separate test case from duplicate.rs since the error messages
-// occur at different points of compilation.
-
-const ONE: isize = 1;
-
-#[open_enum]
-enum NonLiteralDuplicateVariant {
-    A = 1,
-    B = 2,
-    C = ONE,
-}
-
-#[open_enum]
-enum NonLiteralImplicitDuplicateVariant {
-    A = ONE,
-    B = 0,
+#[open_enum::open_enum]
+#[repr(u8)]
+enum NonLiteralImplicitOverflow {
+    A = u8::MAX - 1,
+    B,
     C,
 }
 
+// TODO: overflow isize with the implicit repr
 fn main() {}

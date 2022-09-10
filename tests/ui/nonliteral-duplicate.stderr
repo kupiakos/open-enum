@@ -1,0 +1,24 @@
+error[E0081]: discriminant value `1` assigned more than once
+  --> tests/ui/nonliteral-duplicate.rs:24:1
+   |
+24 | / enum NonLiteralDuplicateVariant {
+25 | |     A = 1,
+   | |         - first assignment of `1`
+26 | |     B = 2,
+27 | |     C = ONE,
+   | |         --- second assignment of `1`
+28 | | }
+   | |_^
+
+error[E0081]: discriminant value `1` assigned more than once
+  --> tests/ui/nonliteral-duplicate.rs:31:1
+   |
+31 | / enum NonLiteralImplicitDuplicateVariant {
+32 | |     A = ONE,
+   | |         --- first assignment of `1`
+33 | |     B = 0,
+   | |     ----- assigned discriminant for `C` was incremented from this discriminant
+34 | |     C,
+   | |     - second assignment of `1`
+35 | | }
+   | |_^

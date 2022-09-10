@@ -13,20 +13,25 @@
 // limitations under the License.
 
 extern crate open_enum;
+use open_enum::open_enum;
 
-#[open_enum::open_enum]
-#[repr(u8)]
-enum OverflowingLiteral {
-    A = 0xffef,
-    B,
+// This is a separate test case from duplicate.rs since the error messages
+// occur at different points of compilation.
+
+const ONE: isize = 1;
+
+#[open_enum]
+enum NonLiteralDuplicateVariant {
+    A = 1,
+    B = 2,
+    C = ONE,
 }
 
-#[open_enum::open_enum]
-#[repr(u8)]
-enum LiteralImplicitOverflow {
-    A = 255,
-    B,
+#[open_enum]
+enum NonLiteralImplicitDuplicateVariant {
+    A = ONE,
+    B = 0,
+    C,
 }
 
-// TODO: overflow isize with the implicit repr
 fn main() {}

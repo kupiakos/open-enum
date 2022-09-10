@@ -1,6 +1,6 @@
 [package]
 name = "open-enum"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alyssa Haroldsen <kupiakos@google.com>"]
 description = "An attribute for generating \"open\" fieldless enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
@@ -15,11 +15,10 @@ include = ["/src", "/LICENSE", "Cargo.toml"]
 # Needed to test #[deny(missing_docs)], which doesn't trigger in unit or integration tests.
 [[bin]]
 name = "test_lints"
-path = "tests/lints.rs"
+path = "src/test-lints.rs"
 
 [dependencies]
-open-enum-derive = { path = "derive", version = "0.1.0" }
-paste = "1"
+open-enum-derive = { path = "derive", version = "0.2.0" }
 # TODO: consider making this optional - I tried and trybuild started failing
 libc = { version = "0.2" }
 
