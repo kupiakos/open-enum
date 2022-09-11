@@ -252,12 +252,21 @@ fn check_no_alias<'a>(
                 ));
             }
         } else {
-            return Ok(syn::ItemEnum {
+            let mut checking_enum = syn::ItemEnum {
                 ident: format_ident!("_Check{}", enum_.ident),
                 vis: Visibility::Inherited,
                 ..enum_.clone()
-            }
-            .to_token_stream());
+            };
+            checking_enum.attrs.retain(|attr| {
+                matches!(
+                    attr.path.to_token_stream().to_string().as_str(),
+                    "repr" | "allow" | "warn" | "deny" | "forbid"
+                )
+            });
+            return Ok(quote!(
+                #[allow(dead_code)]
+                #checking_enum
+            ));
         }
     }
     Ok(TokenStream::default())

@@ -65,4 +65,15 @@ pub mod clippy {
     }
 }
 
+pub mod nonliteral {
+    #![deny(dead_code)]
+
+    #[open_enum::open_enum]
+    #[derive(PartialEq, Eq)] // for some reason this has to be here to get a dead_code lint to trigger
+    #[repr(u32)]
+    pub enum Fuzz {
+        Balls = 1 << 1,
+    }
+}
+
 fn main() {}
