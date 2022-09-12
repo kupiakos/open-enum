@@ -221,6 +221,18 @@
 /// assert_eq!(Color::Red, Color(0));
 /// assert_eq!(Color(10).0, 10);
 /// ```
+///
+/// # Options
+/// - `allow_alias[ = $bool]`: default `false`. Allows duplicate discriminant values for variants.
+/// - `inner_vis = $vis`: default `pub`. Specifies the visibility of the inner integer.
+///
+/// # Integer type
+/// `open_enum` configures the discriminant type by intercepting a `repr` attribute on the enum.
+/// If done, the open enum is `#[repr(transparent)]` over the provided integer type.
+/// Otherwise, variant discriminants are interpreted as `isize` and an automatic integer type chosen.
+///
+/// # `PartialEq`/`Eq`
+/// Open enums implement `PartialEq` and `Eq` in order to work in a `match` statement.
 pub use open_enum_derive::open_enum;
 
 /// Utility items only to be used by macros. Do not expect API stability.
