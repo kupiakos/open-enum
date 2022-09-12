@@ -184,13 +184,19 @@ fn open_enum_impl(
 
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
-    let fields = variants.into_iter()
+    let fields = variants
+        .into_iter()
         .map(|(name, value, value_span, attrs)| {
             let mut value = value.into_token_stream();
             value = set_token_stream_span(value, value_span);
+            let inner = if typecheck_repr == inner_repr {
+                value
+            } else {
+                quote!(::core::convert::identity::<#typecheck_repr>(#value) as #inner_repr)
+            };
             quote!(
                 #(#attrs)*
-                pub const #name: Self = Self(::core::convert::identity::<#typecheck_repr>(#value) as #inner_repr);
+                pub const #name: Self = Self(#inner);
             )
         });
 
