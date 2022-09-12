@@ -14,81 +14,21 @@
 
 extern crate proc_macro;
 
-use core::ops::RangeInclusive;
-use proc_macro2::{Literal, Span, TokenStream};
+mod config;
+mod discriminant;
+mod repr;
+
+use config::Config;
+
+use discriminant::Discriminant;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
+use repr::Repr;
 use std::collections::HashSet;
 use syn::{
-    parse::Parse, parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Expr, Ident,
-    ItemEnum, Path, Token, Visibility,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Path,
+    Token, Visibility,
 };
-
-#[derive(Clone)]
-enum Discriminant {
-    Literal(i128),
-    Nonliteral { base: Box<Expr>, offset: u32 },
-}
-
-impl Discriminant {
-    fn new(discriminant_expr: Expr) -> syn::Result<Self> {
-        // Positive literal int
-        if let syn::Expr::Lit(syn::ExprLit {
-            lit: syn::Lit::Int(lit),
-            ..
-        }) = &discriminant_expr
-        {
-            return Ok(Discriminant::Literal(lit.base10_parse()?));
-        }
-
-        // Negative literal int
-        if let syn::Expr::Unary(syn::ExprUnary {
-            op: syn::UnOp::Neg(_),
-            expr,
-            ..
-        }) = &discriminant_expr
-        {
-            if let syn::Expr::Lit(syn::ExprLit {
-                lit: syn::Lit::Int(lit),
-                ..
-            }) = &**expr
-            {
-                return Ok(Discriminant::Literal(-lit.base10_parse()?));
-            }
-        }
-
-        // Nonliteral expression
-        Ok(Discriminant::Nonliteral {
-            base: Box::new(discriminant_expr),
-            offset: 0,
-        })
-    }
-
-    fn next_value(self) -> Option<Self> {
-        Some(match self {
-            Discriminant::Literal(val) => Discriminant::Literal(val.checked_add(1)?),
-            Discriminant::Nonliteral { base, offset } => Discriminant::Nonliteral {
-                base,
-                offset: offset.checked_add(1)?,
-            },
-        })
-    }
-}
-
-impl ToTokens for Discriminant {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.extend(match self {
-            Discriminant::Literal(value) => Literal::i128_unsuffixed(*value).into_token_stream(),
-            Discriminant::Nonliteral { base, offset } => {
-                if *offset == 0 {
-                    base.into_token_stream()
-                } else {
-                    let offset = Literal::u32_unsuffixed(*offset);
-                    quote!(#base + #offset)
-                }
-            }
-        })
-    }
-}
 
 /// Sets the span for every token tree in the token stream
 fn set_token_stream_span(tokens: TokenStream, span: Span) -> TokenStream {
@@ -99,140 +39,6 @@ fn set_token_stream_span(tokens: TokenStream, span: Span) -> TokenStream {
             tt
         })
         .collect()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Repr {
-    I8,
-    U8,
-    U16,
-    I16,
-    U32,
-    I32,
-    U64,
-    I64,
-    Usize,
-    Isize,
-    #[cfg(feature = "repr_c")]
-    C,
-}
-
-fn range_contains(x: &RangeInclusive<i128>, y: &RangeInclusive<i128>) -> bool {
-    x.contains(y.start()) && x.contains(y.end())
-}
-
-impl Repr {
-    const REPR_RANGES: &'static [(Repr, RangeInclusive<i128>)] = &[
-        (Repr::I8, (i8::MIN as i128)..=(i8::MAX as i128)),
-        (Repr::U8, (u8::MIN as i128)..=(u8::MAX as i128)),
-        (Repr::I16, (i16::MIN as i128)..=(i16::MAX as i128)),
-        (Repr::U16, (u16::MIN as i128)..=(u16::MAX as i128)),
-        (Repr::I32, (i32::MIN as i128)..=(i32::MAX as i128)),
-        (Repr::U32, (u32::MIN as i128)..=(u32::MAX as i128)),
-        (Repr::I64, (i64::MIN as i128)..=(i64::MAX as i128)),
-        (Repr::U64, (u64::MIN as i128)..=(u64::MAX as i128)),
-        (Repr::Isize, (isize::MIN as i128)..=(isize::MAX as i128)),
-        (Repr::Usize, (usize::MIN as i128)..=(usize::MAX as i128)),
-    ];
-
-    /// Finds the smallest repr that can fit this range, if any.
-    fn smallest_fitting_repr(range: RangeInclusive<i128>) -> Option<Self> {
-        // TODO: perhaps check this logic matches current rustc behavior?
-        for (repr, repr_range) in Self::REPR_RANGES {
-            if range_contains(repr_range, &range) {
-                return Some(*repr);
-            }
-        }
-        None
-    }
-
-    fn name(self) -> &'static str {
-        match self {
-            Repr::I8 => "i8",
-            Repr::U8 => "u8",
-            Repr::U16 => "u16",
-            Repr::I16 => "i16",
-            Repr::U32 => "u32",
-            Repr::I32 => "i32",
-            Repr::U64 => "u64",
-            Repr::I64 => "i64",
-            Repr::Usize => "usize",
-            Repr::Isize => "isize",
-            #[cfg(feature = "repr_c")]
-            Repr::C => "C",
-        }
-    }
-}
-
-impl ToTokens for Repr {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.extend([match self {
-            // Technically speaking, #[repr(C)] on an enum isn't always `c_int`,
-            // but those who care can fix it if they need.
-            #[cfg(feature = "repr_c")]
-            Repr::C => quote!(::open_enum::__private::c_int),
-            x => x.name().parse::<TokenStream>().unwrap(),
-        }])
-    }
-}
-
-impl Parse for Repr {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let ident: Ident = input.parse()?;
-        Ok(match ident.to_string().as_str() {
-            "i8" => Repr::I8,
-            "u8" => Repr::U8,
-            "i16" => Repr::I16,
-            "u16" => Repr::U16,
-            "i32" => Repr::I32,
-            "u32" => Repr::U32,
-            "i64" => Repr::I64,
-            "u64" => Repr::U64,
-            "usize" => Repr::Usize,
-            "isize" => Repr::Isize,
-            #[cfg(feature = "repr_c")]
-            "C" => Repr::C,
-            #[cfg(not(feature = "repr_c"))]
-            "C" => {
-                return Err(Error::new(
-                    ident.span(),
-                    "#[repr(C)] requires either the `std` or `libc_` feature",
-                ))
-            }
-            _ => {
-                return Err(Error::new(
-                    ident.span(),
-                    format!("unsupported repr `{ident}`"),
-                ))
-            }
-        })
-    }
-}
-
-/// Figure out what the internal representation of the enum should be given its variants.
-///
-/// If we don't have sufficient info to auto-shrink the internal repr, fallback to isize.
-fn autodetect_inner_repr<'a>(variants: impl Iterator<Item = &'a Discriminant>) -> Repr {
-    let mut variants = variants.peekable();
-    if variants.peek().is_none() {
-        // TODO: maybe use the unit type for a fieldless open enum without a #[repr]?
-        return Repr::Isize;
-    }
-    let mut min = i128::MAX;
-    let mut max = i128::MIN;
-    for value in variants {
-        match value {
-            &Discriminant::Literal(value) => {
-                min = min.min(value);
-                max = max.max(value);
-            }
-            Discriminant::Nonliteral { .. } => {
-                // No way to do fancy sizing here, fall back to isize.
-                return Repr::Isize;
-            }
-        }
-    }
-    Repr::smallest_fitting_repr(min..=max).unwrap_or(Repr::Isize)
 }
 
 /// Checks that there are no duplicate discriminant values. If all variants are literals, return an `Err` so we can have
@@ -359,7 +165,7 @@ fn open_enum_impl(
         None => {
             // If there isn't an explicit repr, determine an appropriate sized integer that will fit.
             // Interpret all discriminant expressions as isize.
-            autodetect_inner_repr(variants.iter().map(|v| &v.1))
+            repr::autodetect_inner_repr(variants.iter().map(|v| &v.1))
         }
     };
 
@@ -400,72 +206,6 @@ fn open_enum_impl(
         }
         #alias_check
     })
-}
-
-struct Config {
-    allow_alias: bool,
-    repr_visibility: Visibility,
-}
-
-impl Parse for Config {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut out = Self {
-            allow_alias: false,
-            repr_visibility: Visibility::Public(syn::VisPublic {
-                pub_token: Token![pub](Span::call_site()),
-            }),
-        };
-        let mut seen_names = HashSet::new();
-        while !input.is_empty() {
-            let name: Ident = input.parse()?;
-            let name_string = name.to_token_stream().to_string();
-            let has_value = input.peek(Token![=]);
-            if has_value {
-                let _eq_token: Token![=] = input.parse()?;
-            }
-            match name_string.as_str() {
-                "allow_alias" => {
-                    if has_value {
-                        let allow_alias: syn::LitBool = input.parse()?;
-                        out.allow_alias = allow_alias.value;
-                    } else {
-                        out.allow_alias = true;
-                    }
-                }
-                name_str @ "inner_vis" if !has_value => {
-                    return Err(Error::new(
-                        name.span(),
-                        &format!("Option `{name_str}` requires a value"),
-                    ))
-                }
-                "inner_vis" => {
-                    out.repr_visibility = input.parse()?;
-                    if matches!(out.repr_visibility, syn::Visibility::Inherited) {
-                        return Err(input.error("Expected visibility"));
-                    }
-                }
-                unknown_name => {
-                    return Err(Error::new(
-                        name.span(),
-                        &format!("Unknown option `{unknown_name}`"),
-                    ));
-                }
-            }
-            if !input.is_empty() {
-                let _comma: Token![,] = input.parse()?;
-            }
-            if !seen_names.insert(name_string) {
-                return Err(Error::new(
-                    name.span(),
-                    &format!(
-                        "Option `{name}` listed more than once",
-                        name = name.to_token_stream()
-                    ),
-                ));
-            }
-        }
-        Ok(out)
-    }
 }
 
 #[proc_macro_attribute]
