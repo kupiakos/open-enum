@@ -44,6 +44,13 @@ enum ExplicitRepr {
     Boo,
 }
 
+#[repr(u64)]
+#[open_enum]
+enum ExplicitReprTop {
+    Blah,
+    Boo,
+}
+
 #[open_enum]
 enum NegativeDiscriminant {
     What = -5,
@@ -110,6 +117,7 @@ fn match_() {
 #[test]
 fn explicit_repr() {
     let _x: i32 = ExplicitRepr::Blah.0;
+    let _y: u64 = ExplicitReprTop::Blah.0;
 }
 
 #[test]
