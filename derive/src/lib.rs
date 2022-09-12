@@ -196,7 +196,7 @@ fn open_enum_impl(
             };
             quote!(
                 #(#attrs)*
-                pub const #name: Self = Self(#inner);
+                pub const #name: #ident = #ident(#inner);
             )
         });
 
