@@ -1,0 +1,23 @@
+error: expected boolean literal
+  --> tests/ui/options.rs:18:27
+   |
+18 | #[open_enum(allow_alias = pub(crate))]
+   |                           ^^^
+
+error: Unknown option `not_a_real_option`
+  --> tests/ui/options.rs:23:13
+   |
+23 | #[open_enum(not_a_real_option)]
+   |             ^^^^^^^^^^^^^^^^^
+
+error: Expected visibility
+  --> tests/ui/options.rs:28:25
+   |
+28 | #[open_enum(inner_vis = "true")]
+   |                         ^^^^^^
+
+error: Option `allow_alias` listed more than once
+  --> tests/ui/options.rs:33:33
+   |
+33 | #[open_enum(allow_alias = true, allow_alias = false)]
+   |                                 ^^^^^^^^^^^

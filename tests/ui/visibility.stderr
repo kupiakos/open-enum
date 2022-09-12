@@ -1,0 +1,5 @@
+error[E0616]: field `0` of struct `Foo` is private
+  --> tests/ui/visibility.rs:28:63
+   |
+28 | const _ShouldFail: () = assert!(access_limit::inner::Foo::Bar.0 == 0);
+   |                                                               ^ private field

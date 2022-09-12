@@ -28,7 +28,7 @@ error: enum cannot be generic
 51 | enum C<T> {
    |       ^
 
-error: foo is not a recognized open_enum option
+error: Unknown option `foo`
   --> tests/ui/basic.rs:57:13
    |
 57 | #[open_enum(foo)]

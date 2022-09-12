@@ -15,18 +15,24 @@
 extern crate open_enum;
 use open_enum::open_enum;
 
-#[open_enum]
-enum DuplicateVariant {
-    A = 1,
-    B = 2,
-    C = 1,
+#[open_enum(allow_alias = pub(crate))]
+pub enum Foo {
+    Bar,
 }
 
-#[open_enum(allow_alias = false)]
-enum ImplicitDuplicateVariant {
-    A = 0,
-    B = -1,
-    C,
+#[open_enum(not_a_real_option)]
+pub enum Fizz {
+    Buzz,
+}
+
+#[open_enum(inner_vis = "true")]
+pub enum Alpha {
+    Bet,
+}
+
+#[open_enum(allow_alias = true, allow_alias = false)]
+pub enum Nine {
+    Tales,
 }
 
 fn main() {}

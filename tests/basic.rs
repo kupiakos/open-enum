@@ -59,6 +59,14 @@ enum Color {
     Azure,
 }
 
+#[open_enum(allow_alias = true, inner_vis = pub(crate))]
+enum Color2 {
+    Green = 0,
+    Purple,
+    Emerald = 0,
+    Violet,
+}
+
 #[test]
 fn values() {
     assert_eq!(Fruit::Apple.0, 0);

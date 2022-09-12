@@ -13,20 +13,19 @@
 // limitations under the License.
 
 extern crate open_enum;
-use open_enum::open_enum;
 
-#[open_enum]
-enum DuplicateVariant {
-    A = 1,
-    B = 2,
-    C = 1,
+pub mod access_limit {
+    pub mod inner {
+        #[open_enum::open_enum(inner_vis = pub(super))]
+        pub enum Foo {
+            Bar,
+            Baz,
+        }
+    }
+    const _ShouldCompile: () = assert!(inner::Foo::Bar.0 == 0);
 }
 
-#[open_enum(allow_alias = false)]
-enum ImplicitDuplicateVariant {
-    A = 0,
-    B = -1,
-    C,
-}
+const _ShouldFail: () = assert!(access_limit::inner::Foo::Bar.0 == 0);
 
 fn main() {}
+// const _:

@@ -272,7 +272,13 @@ fn check_no_alias<'a>(
     Ok(TokenStream::default())
 }
 
-fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Error> {
+fn open_enum_impl(
+    enum_: ItemEnum,
+    Config {
+        allow_alias,
+        repr_visibility,
+    }: Config,
+) -> Result<TokenStream, Error> {
     // Does the enum define a `#[repr()]`?
     let mut struct_attrs: Vec<TokenStream> = Vec::with_capacity(enum_.attrs.len() + 5);
     struct_attrs.push(quote!(#[allow(clippy::exhaustive_structs)]));
@@ -384,7 +390,7 @@ fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Err
 
     Ok(quote! {
         #(#struct_attrs)*
-        #vis struct #ident(pub #inner_repr);
+        #vis struct #ident(#repr_visibility #inner_repr);
 
         #(#impl_attrs)*
         impl #ident {
@@ -396,31 +402,80 @@ fn open_enum_impl(enum_: ItemEnum, allow_alias: bool) -> Result<TokenStream, Err
     })
 }
 
+struct Config {
+    allow_alias: bool,
+    repr_visibility: Visibility,
+}
+
+impl Parse for Config {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut out = Self {
+            allow_alias: false,
+            repr_visibility: Visibility::Public(syn::VisPublic {
+                pub_token: Token![pub](Span::call_site()),
+            }),
+        };
+        let mut seen_names = HashSet::new();
+        while !input.is_empty() {
+            let name: Ident = input.parse()?;
+            let name_string = name.to_token_stream().to_string();
+            let has_value = input.peek(Token![=]);
+            if has_value {
+                let _eq_token: Token![=] = input.parse()?;
+            }
+            match name_string.as_str() {
+                "allow_alias" => {
+                    if has_value {
+                        let allow_alias: syn::LitBool = input.parse()?;
+                        out.allow_alias = allow_alias.value;
+                    } else {
+                        out.allow_alias = true;
+                    }
+                }
+                name_str @ "inner_vis" if !has_value => {
+                    return Err(Error::new(
+                        name.span(),
+                        &format!("Option `{name_str}` requires a value"),
+                    ))
+                }
+                "inner_vis" => {
+                    out.repr_visibility = input.parse()?;
+                    if matches!(out.repr_visibility, syn::Visibility::Inherited) {
+                        return Err(input.error("Expected visibility"));
+                    }
+                }
+                unknown_name => {
+                    return Err(Error::new(
+                        name.span(),
+                        &format!("Unknown option `{unknown_name}`"),
+                    ));
+                }
+            }
+            if !input.is_empty() {
+                let _comma: Token![,] = input.parse()?;
+            }
+            if !seen_names.insert(name_string) {
+                return Err(Error::new(
+                    name.span(),
+                    &format!(
+                        "Option `{name}` listed more than once",
+                        name = name.to_token_stream()
+                    ),
+                ));
+            }
+        }
+        Ok(out)
+    }
+}
+
 #[proc_macro_attribute]
 pub fn open_enum(
     attrs: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let enum_ = parse_macro_input!(input as syn::ItemEnum);
-    let attrs = parse_macro_input!(attrs with Punctuated::<Path, Token![,]>::parse_terminated);
-    let mut allow_alias = false;
-    for attr in attrs {
-        if attr.is_ident("allow_alias") {
-            allow_alias = true;
-        } else {
-            return Error::new(
-                attr.span(),
-                &format!(
-                    "{attr} is not a recognized open_enum option",
-                    attr = attr.into_token_stream()
-                ),
-            )
-            .into_compile_error()
-            .into();
-        }
-    }
-
-    open_enum_impl(enum_, allow_alias)
+    let config = parse_macro_input!(attrs as Config);
+    open_enum_impl(enum_, config)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
