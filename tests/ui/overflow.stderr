@@ -4,9 +4,9 @@ error: literal out of range for `u8`
 20 |     A = 0xffef,
    |         ^^^^^^
    |
-   = note: `#[deny(overflowing_literals)]` on by default
    = note: the literal `0xffef` (decimal `65519`) does not fit into the type `u8` and will become `239u8`
    = help: consider using the type `u16` instead
+   = note: `#[deny(overflowing_literals)]` on by default
 
 error: literal out of range for `u8`
   --> tests/ui/overflow.rs:21:5
