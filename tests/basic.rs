@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use anyhow::Result;
+
 extern crate open_enum;
 use open_enum::*;
 
 #[open_enum]
+#[derive(Debug)]
 enum Fruit {
     Apple,
     Pear,
@@ -37,11 +40,12 @@ enum HasHash {
     Lemon,
 }
 
-#[open_enum]
+#[open_enum(primitive_conversions)]
+#[derive(Debug)]
 #[repr(i32)]
 enum ExplicitRepr {
-    Blah,
-    Boo,
+    Blah = -1,
+    Boo = 1,
 }
 
 #[repr(u64)]
@@ -85,7 +89,7 @@ fn values() {
     assert_eq!(AlreadyDerivesEq::Fizz.0, 0);
     assert_eq!(AlreadyDerivesEq::Buzz.0, 1);
 
-    assert_eq!(ExplicitRepr::Blah.0, 0);
+    assert_eq!(ExplicitRepr::Blah.0, -1);
     assert_eq!(ExplicitRepr::Boo.0, 1);
 
     assert_eq!(NegativeDiscriminant::What.0, -5);
@@ -96,6 +100,41 @@ fn values() {
     assert_eq!(Color::Crimson.0, 0);
     assert_eq!(Color::Blue.0, 1);
     assert_eq!(Color::Azure.0, 1);
+}
+
+#[test]
+fn from_integer() {
+    assert_eq!(Fruit::Apple, Fruit::from(0));
+    assert_eq!(Fruit::Pear, Fruit::from(1));
+    assert_eq!(Fruit::Banana, Fruit::from(2));
+    assert_eq!(Fruit::Blueberry, Fruit::from(5));
+    assert_eq!(Fruit::Raspberry, Fruit::from(6));
+}
+
+#[test]
+fn to_integer() {
+    // The `Fruit` enum autodetects the repr as `i8`.
+    assert_eq!(i8::from(Fruit::Apple), 0);
+    assert_eq!(i8::from(Fruit::Pear), 1);
+    assert_eq!(i8::from(Fruit::Banana), 2);
+    assert_eq!(i8::from(Fruit::Blueberry), 5);
+    assert_eq!(i8::from(Fruit::Raspberry), 6);
+}
+
+#[test]
+fn try_from_integer() -> Result<()> {
+    assert_eq!(ExplicitRepr::try_from(-1i8)?, ExplicitRepr::Blah);
+    assert_eq!(ExplicitRepr::try_from(1u64)?, ExplicitRepr::Boo);
+    assert!(ExplicitRepr::try_from(0xFFFF_FFFFu32).is_err());
+    Ok(())
+}
+
+#[test]
+fn try_to_integer() -> Result<()> {
+    assert_eq!(i8::try_from(ExplicitRepr::Blah)?, -1);
+    assert_eq!(u32::try_from(ExplicitRepr::Boo)?, 1);
+    assert!(u32::try_from(ExplicitRepr::Blah).is_err());
+    Ok(())
 }
 
 #[test]

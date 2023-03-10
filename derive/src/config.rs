@@ -21,6 +21,7 @@ use syn::{parse::Parse, Error, Token, Visibility};
 pub struct Config {
     pub allow_alias: bool,
     pub repr_visibility: Visibility,
+    pub primitive_conversions: bool,
 }
 
 impl Parse for Config {
@@ -30,6 +31,7 @@ impl Parse for Config {
             repr_visibility: Visibility::Public(syn::VisPublic {
                 pub_token: Token![pub](Span::call_site()),
             }),
+            primitive_conversions: false,
         };
         let mut seen_names = HashSet::new();
         while !input.is_empty() {
@@ -59,6 +61,9 @@ impl Parse for Config {
                     if matches!(out.repr_visibility, syn::Visibility::Inherited) {
                         return Err(input.error("Expected visibility"));
                     }
+                }
+                "primitive_conversions" => {
+                    out.primitive_conversions = true;
                 }
                 unknown_name => {
                     return Err(Error::new(
