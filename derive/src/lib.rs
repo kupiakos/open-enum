@@ -83,6 +83,7 @@ fn open_enum_impl(
     Config {
         allow_alias,
         repr_visibility,
+        primitive_conversions,
     }: Config,
 ) -> Result<TokenStream, Error> {
     // Does the enum define a `#[repr()]`?
@@ -200,6 +201,51 @@ fn open_enum_impl(
             )
         });
 
+    let try_froms = if primitive_conversions {
+        let primitives = [
+            Repr::I8,
+            Repr::U8,
+            Repr::U16,
+            Repr::I16,
+            Repr::U32,
+            Repr::I32,
+            Repr::U64,
+            Repr::I64,
+            Repr::Usize,
+            Repr::Isize,
+        ];
+        TokenStream::from_iter(
+            primitives
+                .iter()
+                .filter(|&repr| {
+                    // Skip our own inner_repr because core implements TryFrom based
+                    // on the existence of an infallible From implementation.
+                    *repr != inner_repr
+                })
+                .map(|prim| {
+                    quote! {
+                        impl std::convert::TryFrom<#prim> for #ident {
+                            type Error = <#inner_repr as TryFrom<#prim>>::Error;
+                            fn try_from(val: #prim) -> Result<Self, Self::Error> {
+                                let val = #inner_repr::try_from(val)?;
+                                Ok(Self(val))
+                            }
+                        }
+
+                        impl std::convert::TryFrom<#ident> for #prim {
+                            type Error = <#prim as TryFrom<#inner_repr>>::Error;
+                            fn try_from(val: #ident) -> Result<Self, Self::Error> {
+                                let val = #prim::try_from(val.0)?;
+                                Ok(val)
+                            }
+                        }
+                    }
+                }),
+        )
+    } else {
+        TokenStream::default()
+    };
+
     Ok(quote! {
         #(#struct_attrs)*
         #vis struct #ident(#repr_visibility #inner_repr);
@@ -223,6 +269,8 @@ fn open_enum_impl(
                 val.0
             }
         }
+        #try_froms
+
     })
 }
 
