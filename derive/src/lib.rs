@@ -81,8 +81,8 @@ fn check_no_alias<'a>(
 fn emit_debug_impl<'a>(
     ident: &Ident,
     variants: impl Iterator<Item = &'a Ident> + Clone,
-) -> syn::Result<TokenStream> {
-    Ok(quote!(impl ::core::fmt::Debug for #ident {
+) -> TokenStream {
+    quote!(impl ::core::fmt::Debug for #ident {
         fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
             #![allow(unreachable_patterns)]
             let s = match *self {
@@ -93,7 +93,7 @@ fn emit_debug_impl<'a>(
             };
             fmt.pad(s)
         }
-    }))
+    })
 }
 
 fn open_enum_impl(
@@ -153,8 +153,8 @@ fn open_enum_impl(
                     }
 
                     // If we allow aliasing, then don't bother with a custom
-                    // debug impl. There's no way to tell which alias we
-                    // should print.
+                    // debug impl. There's no way to tell which alias we should
+                    // print.
                     if derive.is_ident("Debug") && !allow_alias {
                         make_custom_debug_impl = true;
                         include_in_struct = false;
@@ -212,7 +212,7 @@ fn open_enum_impl(
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
     let debug_impl = if make_custom_debug_impl {
-        emit_debug_impl(&ident, variants.iter().map(|(i, _, _, _)| *i))?
+        emit_debug_impl(&ident, variants.iter().map(|(i, _, _, _)| *i))
     } else {
         TokenStream::default()
     };
