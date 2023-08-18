@@ -152,7 +152,7 @@ fn open_enum_impl(
                         our_derives.remove("Eq");
                     }
 
-                    // If we allow aliasing, then don't bother a custom
+                    // If we allow aliasing, then don't bother with a custom
                     // debug impl. There's no way to tell which alias we
                     // should print.
                     if derive.is_ident("Debug") && !allow_alias {
