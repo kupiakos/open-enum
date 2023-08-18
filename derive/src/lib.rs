@@ -78,6 +78,24 @@ fn check_no_alias<'a>(
     Ok(TokenStream::default())
 }
 
+fn emit_debug_impl<'a>(
+    ident: &Ident,
+    variants: impl Iterator<Item = &'a Ident> + Clone,
+) -> syn::Result<TokenStream> {
+    Ok(quote!(impl ::core::fmt::Debug for #ident {
+        fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            #![allow(unreachable_patterns)]
+            let s = match *self {
+                #( Self::#variants => stringify!(#variants), )*
+                _ => {
+                    return ::core::fmt::Debug::fmt(&self.0, fmt);
+                }
+            };
+            fmt.pad(s)
+        }
+    }))
+}
+
 fn open_enum_impl(
     enum_: ItemEnum,
     Config {
@@ -119,6 +137,7 @@ fn open_enum_impl(
     let mut our_derives = HashSet::new();
     our_derives.insert("PartialEq");
     our_derives.insert("Eq");
+    let mut make_custom_debug_impl = false;
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
@@ -131,6 +150,14 @@ fn open_enum_impl(
                         our_derives.remove("PartialEq");
                     } else if derive.is_ident("Eq") {
                         our_derives.remove("Eq");
+                    }
+
+                    // If we allow aliasing, then don't bother a custom
+                    // debug impl. There's no way to tell which alias we
+                    // should print.
+                    if derive.is_ident("Debug") && !allow_alias {
+                        make_custom_debug_impl = true;
+                        include_in_struct = false;
                     }
                 }
             }
@@ -184,6 +211,12 @@ fn open_enum_impl(
 
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
+    let debug_impl = if make_custom_debug_impl {
+        emit_debug_impl(&ident, variants.iter().map(|(i, _, _, _)| *i))?
+    } else {
+        TokenStream::default()
+    };
+
     let fields = variants
         .into_iter()
         .map(|(name, value, value_span, attrs)| {
@@ -210,6 +243,7 @@ fn open_enum_impl(
                 #fields
             )*
         }
+        #debug_impl
         #alias_check
     })
 }
