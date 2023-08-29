@@ -173,6 +173,44 @@
 //!
 //! ```
 //!
+//!
+//!
+//! # Custom debug implementation
+//! `open_enum` will generate a debug implementation that mirrors the standard `#[derive(Debug)]` for normal Rust enums
+//! by printing the name of the variant rather than the value contained, if the value is a named variant.
+//!
+//! However, if an enum has `#[open_enum(allow_alias)]` specified, the debug representation will be the numeric value only.
+//!
+//! For example, the given enum will have the following debug implementation emitted:
+//! ```no_run
+//! #[open_enum]
+//! #[derive(Debug)]
+//! enum Fruit {
+//!     Apple,
+//!     Pear,
+//!     Banana,
+//!     Blueberry = 5,
+//!     Raspberry,
+//! }
+//!
+//! impl ::core::fmt::Debug for Fruit {
+//! fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+//!         #![allow(unreachable_patterns)]
+//!         let s = match *self {
+//!             Self::Apple => stringify!(Apple),
+//!             Self::Pear => stringify!(Pear),
+//!             Self::Banana => stringify!(Banana),
+//!             Self::Blueberry => stringify!(Blueberry),
+//!             Self::Raspberry => stringify!(Raspberry),
+//!             _ => {
+//!                 return ::core::fmt::Debug::fmt(&self.0, fmt);
+//!             }
+//!         };
+//!         fmt.pad(s)
+//!     }
+//! }
+//! ```
+//!
 //! # Compared with `#[non_exhuastive]`
 //! The [`non_exhaustive`][non-exhaustive] attribute indicates that a type or variant
 //! may have more fields or variants added in the future. When applied to an `enum` (not its variants),
