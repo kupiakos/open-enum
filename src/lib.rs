@@ -203,7 +203,7 @@
 //!             Self::Blueberry => stringify!(Blueberry),
 //!             Self::Raspberry => stringify!(Raspberry),
 //!             _ => {
-//!                 return ::core::fmt::Debug::fmt(&self.0, fmt);
+//!                 return fmt.debug_tuple(stringify!(Fruit)).field(&self.0).finish();
 //!             }
 //!         };
 //!         fmt.pad(s)

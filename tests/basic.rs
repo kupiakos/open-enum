@@ -125,7 +125,14 @@ fn named_debug() {
         Fruit::Raspberry,
         Fruit(20),
     ];
-    let expected_output = ["Apple", "Banana", "Blueberry", "Pear", "Raspberry", "20"];
+    let expected_output = [
+        "Apple",
+        "Banana",
+        "Blueberry",
+        "Pear",
+        "Raspberry",
+        "Fruit(20)",
+    ];
 
     for (debug, expected) in fruits
         .iter()

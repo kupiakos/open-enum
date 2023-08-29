@@ -88,7 +88,7 @@ fn emit_debug_impl<'a>(
             let s = match *self {
                 #( Self::#variants => stringify!(#variants), )*
                 _ => {
-                    return ::core::fmt::Debug::fmt(&self.0, fmt);
+                    return fmt.debug_tuple(stringify!(#ident)).field(&self.0).finish();
                 }
             };
             fmt.pad(s)
