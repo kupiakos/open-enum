@@ -16,6 +16,7 @@ extern crate open_enum;
 use open_enum::*;
 
 #[open_enum]
+#[derive(Debug)]
 enum Fruit {
     Apple,
     Pear,
@@ -111,6 +112,34 @@ fn match_() {
             Fruit(x) => format!("unknown fruit {x}"),
         };
         assert_eq!(fruit_str, expected);
+    }
+}
+
+#[test]
+fn named_debug() {
+    let fruits = [
+        Fruit::Apple,
+        Fruit::Banana,
+        Fruit::Blueberry,
+        Fruit::Pear,
+        Fruit::Raspberry,
+        Fruit(20),
+    ];
+    let expected_output = [
+        "Apple",
+        "Banana",
+        "Blueberry",
+        "Pear",
+        "Raspberry",
+        "Fruit(20)",
+    ];
+
+    for (debug, expected) in fruits
+        .iter()
+        .map(|f| format!("{f:?}"))
+        .zip(expected_output.iter())
+    {
+        assert_eq!(&debug.as_str(), expected)
     }
 }
 
