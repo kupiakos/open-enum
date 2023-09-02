@@ -15,14 +15,21 @@
 //! Rust enums are _closed_, meaning that the integer value distinguishing an enum, its _discriminant_,
 //! must be one of the variants listed. If the integer value isn't one of those discriminants, it
 //! is considered immediate [undefined behavior][ub]. This is true for enums with and without fields.
-//! This can make working with enums troublesome in high performance code that can't afford premature
-//! runtime checks.
-//! It can also introduce Undefined Behavior at unexpected times if the author is unfamiliar with
-//! the [rules of writing `unsafe` Rust][nomicon].
+//!
+//! This has some disadvantages:
+//! - in constrained environments, closed enums can require premature runtime checks when using
+//!   `TryFrom` to convert from an integer. This is doubly true if the value will be checked again
+//!   at a later point, such as with a C library.
+//! - an outdated binary using an enum won't preserve the value of an unknown field when reserializing
+//!   data without an extra `Unrecognized` value making the type more expensive than an integer.
+//! - it can introduce Undefined Behavior at unexpected times if the author is unfamiliar with
+//!   the [rules of writing `unsafe` Rust][nomicon].
 //!
 //! In constrast, C++ [scoped enumerations][cpp-scoped-enum] are _open_, meaning that the enum is a
 //! strongly-typed integer that could hold any value, though with a scoped set of well-known values.
-//! `open_enum` lets you have this in Rust. It turns this enum declaration:
+//!
+//! The _open enum_ pattern lets you have this in Rust. With a [newtype][newtype] and associated constants,
+//! the [open_enum][open_enum] macro turns this enum declaration:
 //!
 //! ```
 //! # use open_enum::open_enum;
@@ -40,7 +47,7 @@
 //!
 //! ```
 //! #[derive(PartialEq, Eq)]  // In order to work in `match`.
-//! struct Color(pub u8);  // Automatic integer type, can be specified.
+//! struct Color(pub i8);  // Automatic integer type, can be specified with #[repr]
 //!
 //! impl Color {
 //!     pub const Red: Self = Color(0);
@@ -51,7 +58,7 @@
 //! }
 //! ```
 //!
-//! There are clear readability benefits to using field-less `enum`s to represent integer data.
+//! There are clear readability benefits to using field-less `enum`s to represent enumerated integer data.
 //! It provides more type safety than a raw integer, the `enum` syntax is consise, and it provides a
 //! set of constants grouped under a type that can have methods.
 //!
@@ -96,7 +103,7 @@
 //!     Color(value) => assert_eq!(value, 10),
 //! }
 //!
-//! // Unlike a regular enum, you can pass the discriminant value as a reference.
+//! // Unlike a regular enum, you can pass the discriminant as a reference.
 //! fn increment(x: &mut i8) {
 //!     *x += 1;
 //! }
@@ -107,7 +114,7 @@
 //!
 //! ```
 //!
-//! # Integer type
+//! ## Integer type
 //! `open_enum` will automatically determine an appropriately sized integer[^its-all-isize] to
 //! represent the enum, if possible[^nonliterals-are-hard]. To choose a specific representation, it's the same
 //! as a regular `enum`: add `#[repr(type)]`.
@@ -150,7 +157,7 @@
 //!
 //! [^repr-c-feature]: This requires either the `std` or `libc_` feature (note the underscore)
 //!
-//! # Aliasing variants
+//! ## Aliasing variants
 //! Regular `enum`s cannot have multiple variants with the same discriminant.
 //! However, since `open_enum` produces associated constants, multiple
 //! names can represent the same integer value. By default, `open_enum`
@@ -221,7 +228,9 @@
 //!
 //! [^mostly-non-exhaustive]: Unless the enum defines a variant for every value of its underlying integer.
 //!
-//! # Disadvantages
+//! # Disadvantages of open enums
+//! - The kind listed in the source code, an `enum`, is not the same as the actual output, a `struct`,
+//!   which could be confusing or hard to debug, since its usage is similar, but not exactly the same.
 //! - No niche optimization: `Option<Color>` is 1 byte as a regular enum,
 //!   but 2 bytes as an open enum.
 //! - No pattern-matching assistance in rust-analyzer.
