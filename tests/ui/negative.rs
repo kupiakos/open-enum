@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 extern crate open_enum;
 use open_enum::open_enum;
 
@@ -22,3 +21,5 @@ enum NegativeDiscriminantOnUnsignedValue {
     A = 0,
     B = -1,
 }
+
+fn main() {}

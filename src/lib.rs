@@ -188,8 +188,9 @@
 //!
 //! However, if an enum has `#[open_enum(allow_alias)]` specified, the debug representation will be the numeric value only.
 //!
-//! For example, the given enum will have the following debug implementation emitted:
-//! ```no_run
+//! For example, this given enum,
+//! ```
+//! # use open_enum::open_enum;
 //! #[open_enum]
 //! #[derive(Debug)]
 //! enum Fruit {
@@ -199,8 +200,20 @@
 //!     Blueberry = 5,
 //!     Raspberry,
 //! }
+//! ```
 //!
-//! impl ::core::fmt::Debug for Fruit {
+//! will have the following debug implementation emitted:
+//! ```
+//! # use open_enum::open_enum;
+//! # #[open_enum]
+//! # enum Fruit {
+//! #     Apple,
+//! #     Pear,
+//! #     Banana,
+//! #     Blueberry = 5,
+//! #     Raspberry,
+//! # }
+//! # impl ::core::fmt::Debug for Fruit {
 //! fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
 //!         #![allow(unreachable_patterns)]
 //!         let s = match *self {
@@ -215,7 +228,7 @@
 //!         };
 //!         fmt.pad(s)
 //!     }
-//! }
+//! # }
 //! ```
 //!
 //! # Compared with `#[non_exhuastive]`
