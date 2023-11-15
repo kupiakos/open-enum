@@ -26,8 +26,8 @@ use quote::{format_ident, quote, ToTokens};
 use repr::Repr;
 use std::collections::HashSet;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Path,
-    Token, Visibility,
+    parse_macro_input, spanned::Spanned, Error, Ident, ItemEnum, Meta, MetaList, NestedMeta,
+    Visibility,
 };
 
 /// Sets the span for every token tree in the token stream
@@ -96,6 +96,25 @@ fn emit_debug_impl<'a>(
     })
 }
 
+fn generate_derive_set(
+    nested: &syn::punctuated::Punctuated<NestedMeta, syn::token::Comma>,
+    allow_alias: bool,
+    derive_set: &mut HashSet<String>,
+) -> bool {
+    let mut make_custom_debug_impl = false;
+    for nested_meta in nested.iter() {
+        if let NestedMeta::Meta(inner_meta) = nested_meta {
+            let inner_meta_str = format!("{}", quote::quote!(#inner_meta));
+            if inner_meta_str.contains("Debug") && !allow_alias {
+                make_custom_debug_impl = true;
+            } else {
+                derive_set.insert(inner_meta_str);
+            }
+        }
+    }
+    make_custom_debug_impl
+}
+
 fn open_enum_impl(
     enum_: ItemEnum,
     Config {
@@ -135,31 +154,24 @@ fn open_enum_impl(
 
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
     let mut our_derives = HashSet::new();
-    our_derives.insert("PartialEq");
-    our_derives.insert("Eq");
+    our_derives.insert("PartialEq".to_owned());
+    our_derives.insert("Eq".to_owned());
     let mut make_custom_debug_impl = false;
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
         match attr.path.to_token_stream().to_string().as_str() {
             "derive" => {
-                let derives =
-                    attr.parse_args_with(Punctuated::<Path, Token![,]>::parse_terminated)?;
-                for derive in derives {
-                    if derive.is_ident("PartialEq") {
-                        our_derives.remove("PartialEq");
-                    } else if derive.is_ident("Eq") {
-                        our_derives.remove("Eq");
-                    }
-
-                    // If we allow aliasing, then don't bother with a custom
-                    // debug impl. There's no way to tell which alias we should
-                    // print.
-                    if derive.is_ident("Debug") && !allow_alias {
-                        make_custom_debug_impl = true;
-                        include_in_struct = false;
+                if let Some(meta) = attr.parse_meta().ok() {
+                    if let Meta::List(MetaList {
+                        path: _, nested, ..
+                    }) = meta
+                    {
+                        make_custom_debug_impl =
+                            generate_derive_set(&nested, allow_alias, &mut our_derives);
                     }
                 }
+                include_in_struct = false;
             }
             // Copy linting attribute to the impl.
             "allow" | "warn" | "deny" | "forbid" => impl_attrs.push(attr.to_token_stream()),
@@ -199,7 +211,7 @@ fn open_enum_impl(
     if !our_derives.is_empty() {
         let our_derives = our_derives
             .into_iter()
-            .map(|d| Ident::new(d, Span::call_site()));
+            .map(|d| Ident::new(&d, Span::call_site()));
         struct_attrs.push(quote!(#[derive(#(#our_derives),*)]));
     }
 
