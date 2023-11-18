@@ -16,51 +16,74 @@ extern crate open_enum;
 use open_enum::*;
 
 #[open_enum]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+)]
 #[repr(u32)]
-pub enum Color3 {
-    Red = 0x0,
-    White = 0x1,
+pub enum Color {
+    Red = 1,
+    Blue = 2,
 }
 
 #[open_enum]
-#[derive(core::fmt::Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    core::fmt::Debug,
+    std::clone::Clone,
+    ::core::marker::Copy,
+    std::cmp::PartialEq,
+    ::core::cmp::Eq,
+    zerocopy::AsBytes,
+    ::zerocopy::FromBytes,
+    zerocopy::FromZeroes,
+)]
 #[repr(u32)]
-pub enum Color4 {
-    Red = 0x0,
-    White = 0x1,
+pub enum ColorWithNonPreludeDerives {
+    Red = 1,
+    Blue = 2,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct EmbeddedColor {
-    pub color: Color3,
+// Ensure that `Color` actually implements the `derive`d traits.
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+)]
+#[repr(C)]
+pub struct EmbedColor {
+    pub color: Color,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct EmbeddedColorExtension {
-    pub color: Color4,
-}
-
-#[test]
-fn embedded_enum_struct() {
-    let test_struct = EmbeddedColor { color: Color3::Red };
-
-    assert_eq!(test_struct.color, Color3::Red);
-
-    let expected_debug_str = "EmbeddedColor { color: Red }";
-    let debug_str = format!("{:?}", test_struct);
-
-    assert_eq!(expected_debug_str, debug_str);
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+)]
+#[repr(C)]
+pub struct EmbedColorWithNonPreludeDerives {
+    pub color: ColorWithNonPreludeDerives,
 }
 
 #[test]
-fn extended_embedded_enum_struct() {
-    let test_struct = EmbeddedColorExtension { color: Color4::Red };
+fn embedded_enum_struct_partialeq() {
+    assert_eq!(
+        EmbedColor { color: Color::Red },
+        EmbedColor { color: Color::Red }
+    );
+    assert_ne!(
+        EmbedColor { color: Color::Red },
+        EmbedColor { color: Color::Blue }
+    );
+}
 
-    assert_eq!(test_struct.color, Color4::Red);
+#[test]
+fn embedded_enum_struct_debug() {
+    let debug_str = format!("{:?}", EmbedColor { color: Color::Red });
+    assert!(debug_str.contains("Red"), "{debug_str}");
+}
 
-    let expected_debug_str = "EmbeddedColorExtension { color: Red }";
-    let debug_str = format!("{:?}", test_struct);
-
-    assert_eq!(expected_debug_str, debug_str);
+#[test]
+fn extended_embedded_enum_struct_debug() {
+    let debug_str = format!(
+        "{:?}",
+        EmbedColorWithNonPreludeDerives {
+            color: ColorWithNonPreludeDerives::Red
+        }
+    );
+    assert!(debug_str.contains("Red"), "{debug_str}");
 }
