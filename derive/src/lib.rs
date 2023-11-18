@@ -26,8 +26,7 @@ use quote::{format_ident, quote, ToTokens};
 use repr::Repr;
 use std::collections::HashSet;
 use syn::{
-    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Path,
-    Token, Visibility,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
 };
 
 /// Sets the span for every token tree in the token stream
@@ -96,6 +95,37 @@ fn emit_debug_impl<'a>(
     })
 }
 
+fn path_matches_prelude_derive(
+    got_path: &syn::Path,
+    expected_path_after_std: &[&'static str],
+) -> bool {
+    let &[a, b] = expected_path_after_std else {
+        unimplemented!("checking against stdlib paths with != 2 parts");
+    };
+    let segments: Vec<&syn::PathSegment> = got_path.segments.iter().collect();
+    if segments
+        .iter()
+        .any(|segment| !matches!(segment.arguments, syn::PathArguments::None))
+    {
+        return false;
+    }
+    match &segments[..] {
+        // `core::fmt::Debug` or `some_crate::module::Name`
+        &[maybe_core_or_std, maybe_a, maybe_b] => {
+            (maybe_core_or_std.ident == "core" || maybe_core_or_std.ident == "std")
+                && maybe_a.ident == a
+                && maybe_b.ident == b
+        }
+        // `fmt::Debug` or `module::Name`
+        &[maybe_a, maybe_b] => {
+            maybe_a.ident == a && maybe_b.ident == b && got_path.leading_colon.is_none()
+        }
+        // `Debug` or `Name``
+        &[maybe_b] => maybe_b.ident == b && got_path.leading_colon.is_none(),
+        _ => false,
+    }
+}
+
 fn open_enum_impl(
     enum_: ItemEnum,
     Config {
@@ -134,31 +164,39 @@ fn open_enum_impl(
     let mut explicit_repr: Option<Repr> = None;
 
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
-    let mut our_derives = HashSet::new();
-    our_derives.insert("PartialEq");
-    our_derives.insert("Eq");
+    let mut extra_derives = vec![quote!(::core::cmp::PartialEq), quote!(::core::cmp::Eq)];
+
     let mut make_custom_debug_impl = false;
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
         match attr.path.to_token_stream().to_string().as_str() {
             "derive" => {
-                let derives =
-                    attr.parse_args_with(Punctuated::<Path, Token![,]>::parse_terminated)?;
-                for derive in derives {
-                    if derive.is_ident("PartialEq") {
-                        our_derives.remove("PartialEq");
-                    } else if derive.is_ident("Eq") {
-                        our_derives.remove("Eq");
-                    }
+                if let Ok(derive_paths) =
+                    attr.parse_args_with(Punctuated::<syn::Path, syn::Token![,]>::parse_terminated)
+                {
+                    for derive in &derive_paths {
+                        // These derives are treated specially
+                        const PARTIAL_EQ_PATH: &[&str] = &["cmp", "PartialEq"];
+                        const EQ_PATH: &[&str] = &["cmp", "Eq"];
+                        const DEBUG_PATH: &[&str] = &["fmt", "Debug"];
 
-                    // If we allow aliasing, then don't bother with a custom
-                    // debug impl. There's no way to tell which alias we should
-                    // print.
-                    if derive.is_ident("Debug") && !allow_alias {
-                        make_custom_debug_impl = true;
-                        include_in_struct = false;
+                        if path_matches_prelude_derive(derive, PARTIAL_EQ_PATH)
+                            || path_matches_prelude_derive(derive, EQ_PATH)
+                        {
+                            // This derive is always included, exclude it.
+                            continue;
+                        }
+                        if path_matches_prelude_derive(derive, DEBUG_PATH) {
+                            if !allow_alias {
+                                make_custom_debug_impl = true;
+                                // Don't include this derive since we're generating a special one.
+                                continue;
+                            }
+                        }
+                        extra_derives.push(derive.to_token_stream());
                     }
+                    include_in_struct = false;
                 }
             }
             // Copy linting attribute to the impl.
@@ -196,11 +234,8 @@ fn open_enum_impl(
         }
     };
 
-    if !our_derives.is_empty() {
-        let our_derives = our_derives
-            .into_iter()
-            .map(|d| Ident::new(d, Span::call_site()));
-        struct_attrs.push(quote!(#[derive(#(#our_derives),*)]));
+    if !extra_derives.is_empty() {
+        struct_attrs.push(quote!(#[derive(#(#extra_derives),*)]));
     }
 
     let alias_check = if allow_alias {
@@ -258,4 +293,42 @@ pub fn open_enum(
     open_enum_impl(enum_, config)
         .unwrap_or_else(Error::into_compile_error)
         .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_path_matches_stdlib_derive() {
+        const DEBUG_PATH: &[&str] = &["fmt", "Debug"];
+
+        for success_case in [
+            "::core::fmt::Debug",
+            "::std::fmt::Debug",
+            "core::fmt::Debug",
+            "std::fmt::Debug",
+            "fmt::Debug",
+            "Debug",
+        ] {
+            assert!(
+                path_matches_prelude_derive(&syn::parse_str(success_case).unwrap(), DEBUG_PATH),
+                "{success_case}"
+            );
+        }
+
+        for fail_case in [
+            "::fmt::Debug",
+            "::Debug",
+            "zerocopy::AsBytes",
+            "::zerocopy::AsBytes",
+            "PartialEq",
+            "core::cmp::Eq",
+        ] {
+            assert!(
+                !path_matches_prelude_derive(&syn::parse_str(fail_case).unwrap(), DEBUG_PATH),
+                "{fail_case}"
+            );
+        }
+    }
 }
