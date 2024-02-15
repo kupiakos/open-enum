@@ -27,9 +27,7 @@ impl Parse for Config {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut out = Self {
             allow_alias: false,
-            repr_visibility: Visibility::Public(syn::VisPublic {
-                pub_token: Token![pub](Span::call_site()),
-            }),
+            repr_visibility: Visibility::Public(Token![pub](Span::call_site())),
         };
         let mut seen_names = HashSet::new();
         while !input.is_empty() {

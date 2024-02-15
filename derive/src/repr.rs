@@ -87,7 +87,7 @@ impl ToTokens for Repr {
             // Technically speaking, #[repr(C)] on an enum isn't always `c_int`,
             // but those who care can fix it if they need.
             #[cfg(feature = "repr_c")]
-            Repr::C => quote!(::open_enum::__private::c_int),
+            Repr::C => quote::quote!(::open_enum::__private::c_int),
             x => x.name().parse::<TokenStream>().unwrap(),
         }])
     }

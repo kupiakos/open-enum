@@ -64,7 +64,7 @@ fn check_no_alias<'a>(
             };
             checking_enum.attrs.retain(|attr| {
                 matches!(
-                    attr.path.to_token_stream().to_string().as_str(),
+                    attr.path().to_token_stream().to_string().as_str(),
                     "repr" | "allow" | "warn" | "deny" | "forbid"
                 )
             });
@@ -170,7 +170,7 @@ fn open_enum_impl(
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
-        match attr.path.to_token_stream().to_string().as_str() {
+        match attr.path().to_token_stream().to_string().as_str() {
             "derive" => {
                 if let Ok(derive_paths) =
                     attr.parse_args_with(Punctuated::<syn::Path, syn::Token![,]>::parse_terminated)
@@ -208,7 +208,7 @@ fn open_enum_impl(
             }
             "non_exhaustive" => {
                 // technically it's exhaustive if the enum covers the full integer range
-                return Err(Error::new(attr.path.span(), "`non_exhaustive` cannot be applied to an open enum; it is already non-exhaustive"));
+                return Err(Error::new(attr.path().span(), "`non_exhaustive` cannot be applied to an open enum; it is already non-exhaustive"));
             }
             _ => {}
         }
