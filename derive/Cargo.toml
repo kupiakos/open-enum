@@ -7,7 +7,7 @@ license = "Apache-2.0"
 repository = "https://github.com/kupiakos/open-enum/tree/main/derive"
 categories = ["no-std", "rust-patterns"]
 keywords = ["enum", "open", "integer", "newtype"]
-include = ["/src", "../LICENSE", "Cargo.toml"]
+include = ["/src", "LICENSE", "Cargo.toml"]
 
 [lib]
 proc-macro = true
