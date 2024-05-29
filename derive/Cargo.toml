@@ -1,6 +1,6 @@
 [package]
 name = "open-enum-derive"
-version = "0.5.0"
+version = "0.5.1"
 description = "An attribute for generating \"open\" C-like enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
 license = "Apache-2.0"

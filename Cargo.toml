@@ -1,6 +1,6 @@
 [package]
 name = "open-enum"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Alyssa Haroldsen <kupiakos@google.com>"]
 description = "An attribute for generating \"open\" fieldless enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
@@ -22,7 +22,7 @@ name = "test_lints"
 path = "src/test-lints.rs"
 
 [dependencies]
-open-enum-derive = { path = "derive", version = "=0.5.0" }
+open-enum-derive = { path = "derive", version = "=0.5.1" }
 libc = { version = "0.2", optional = true }
 
 [dev-dependencies]
