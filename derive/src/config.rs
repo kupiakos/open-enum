@@ -49,7 +49,7 @@ impl Parse for Config {
                 name_str @ "inner_vis" if !has_value => {
                     return Err(Error::new(
                         name.span(),
-                        &format!("Option `{name_str}` requires a value"),
+                        format!("Option `{name_str}` requires a value"),
                     ))
                 }
                 "inner_vis" => {
@@ -61,7 +61,7 @@ impl Parse for Config {
                 unknown_name => {
                     return Err(Error::new(
                         name.span(),
-                        &format!("Unknown option `{unknown_name}`"),
+                        format!("Unknown option `{unknown_name}`"),
                     ));
                 }
             }
@@ -71,7 +71,7 @@ impl Parse for Config {
             if !seen_names.insert(name_string) {
                 return Err(Error::new(
                     name.span(),
-                    &format!(
+                    format!(
                         "Option `{name}` listed more than once",
                         name = name.to_token_stream()
                     ),

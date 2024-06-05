@@ -54,7 +54,7 @@ fn check_no_alias<'a>(
             if !values.insert(value) {
                 return Err(Error::new(
                     span,
-                    &format!("discriminant value `{value}` assigned more than once"),
+                    format!("discriminant value `{value}` assigned more than once"),
                 ));
             }
         } else {
@@ -120,17 +120,17 @@ fn path_matches_prelude_derive(
     }
     match &segments[..] {
         // `core::fmt::Debug` or `some_crate::module::Name`
-        &[maybe_core_or_std, maybe_a, maybe_b] => {
+        [maybe_core_or_std, maybe_a, maybe_b] => {
             (maybe_core_or_std.ident == "core" || maybe_core_or_std.ident == "std")
                 && maybe_a.ident == a
                 && maybe_b.ident == b
         }
         // `fmt::Debug` or `module::Name`
-        &[maybe_a, maybe_b] => {
+        [maybe_a, maybe_b] => {
             maybe_a.ident == a && maybe_b.ident == b && got_path.leading_colon.is_none()
         }
         // `Debug` or `Name``
-        &[maybe_b] => maybe_b.ident == b && got_path.leading_colon.is_none(),
+        [maybe_b] => maybe_b.ident == b && got_path.leading_colon.is_none(),
         _ => false,
     }
 }
@@ -196,12 +196,10 @@ fn open_enum_impl(
                             // This derive is always included, exclude it.
                             continue;
                         }
-                        if path_matches_prelude_derive(derive, DEBUG_PATH) {
-                            if !allow_alias {
-                                make_custom_debug_impl = true;
-                                // Don't include this derive since we're generating a special one.
-                                continue;
-                            }
+                        if path_matches_prelude_derive(derive, DEBUG_PATH) && !allow_alias {
+                            make_custom_debug_impl = true;
+                            // Don't include this derive since we're generating a special one.
+                            continue;
                         }
                         extra_derives.push(derive.to_token_stream());
                     }
