@@ -25,6 +25,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use repr::Repr;
 use std::collections::HashSet;
+use syn::Attribute;
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
 };
@@ -80,12 +81,20 @@ fn check_no_alias<'a>(
 fn emit_debug_impl<'a>(
     ident: &Ident,
     variants: impl Iterator<Item = &'a Ident> + Clone,
+    attrs: impl Iterator<Item = &'a Vec<Attribute>> + Clone,
 ) -> TokenStream {
+    let attrs = attrs.map(|attrs| {
+        // Only allow "#[cfg(...)]" attributes
+        let iter = attrs
+            .iter()
+            .filter(|attr| matches!(attr.path().to_token_stream().to_string().as_str(), "cfg",));
+        quote!(#(#iter)*)
+    });
     quote!(impl ::core::fmt::Debug for #ident {
         fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
             #![allow(unreachable_patterns)]
             let s = match *self {
-                #( Self::#variants => stringify!(#variants), )*
+                #( #attrs Self::#variants => stringify!(#variants), )*
                 _ => {
                     return fmt.debug_tuple(stringify!(#ident)).field(&self.0).finish();
                 }
@@ -247,7 +256,11 @@ fn open_enum_impl(
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
     let debug_impl = if make_custom_debug_impl {
-        emit_debug_impl(&ident, variants.iter().map(|(i, _, _, _)| *i))
+        emit_debug_impl(
+            &ident,
+            variants.iter().map(|(i, _, _, _)| *i),
+            variants.iter().map(|(_, _, _, a)| *a),
+        )
     } else {
         TokenStream::default()
     };
