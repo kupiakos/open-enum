@@ -85,9 +85,7 @@ fn emit_debug_impl<'a>(
 ) -> TokenStream {
     let attrs = attrs.map(|attrs| {
         // Only allow "#[cfg(...)]" attributes
-        let iter = attrs
-            .iter()
-            .filter(|attr| matches!(attr.path().to_token_stream().to_string().as_str(), "cfg",));
+        let iter = attrs.iter().filter(|attr| attr.path().is_ident("cfg"));
         quote!(#(#iter)*)
     });
     quote!(impl ::core::fmt::Debug for #ident {
