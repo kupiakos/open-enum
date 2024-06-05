@@ -26,6 +26,17 @@ pub enum Color {
 }
 
 #[open_enum]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ColorWithFeatures {
+    Red = 1,
+    Blue = 2,
+    /// Test doc
+    #[cfg(feature = "orange")]
+    Orange = 3,
+}
+
+#[open_enum]
 #[derive(
     core::fmt::Debug,
     std::clone::Clone,
