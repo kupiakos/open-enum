@@ -289,6 +289,18 @@ fn open_enum_impl(
         }
         #debug_impl
         #alias_check
+
+        impl From<#inner_repr> for #ident {
+            fn from(val: #inner_repr) -> Self {
+                Self(val)
+            }
+        }
+
+        impl From<#ident> for #inner_repr {
+            fn from(val: #ident) -> Self {
+                val.0
+            }
+        }
     })
 }
 
