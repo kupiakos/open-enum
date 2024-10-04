@@ -1,0 +1,23 @@
+error: Could not find `open_enum_repr` helper attribute, did you forget to use the main `#[open_enum]` attribute macro?
+  --> tests/ui/from-to-repr-no-attr-macro.rs:19:10
+   |
+19 | #[derive(ToRepr)]
+   |          ^^^^^^
+   |
+   = note: this error originates in the derive macro `ToRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Could not find `open_enum_repr` helper attribute, did you forget to use the main `#[open_enum]` attribute macro?
+  --> tests/ui/from-to-repr-no-attr-macro.rs:25:10
+   |
+25 | #[derive(FromRepr)]
+   |          ^^^^^^^^
+   |
+   = note: this error originates in the derive macro `FromRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: Could not find `open_enum_repr` helper attribute, did you forget to use the main `#[open_enum]` attribute macro?
+  --> tests/ui/from-to-repr-no-attr-macro.rs:31:10
+   |
+31 | #[derive(TryFromKnownRepr)]
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `TryFromKnownRepr` (in Nightly builds, run with -Z macro-backtrace for more info)

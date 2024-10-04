@@ -2,9 +2,10 @@ error[E0600]: cannot apply unary operator `-` to type `u32`
   --> tests/ui/negative.rs:22:9
    |
 22 |     B = -1,
-   |         ^
-   |         |
-   |         cannot apply unary operator `-`
-   |         help: you may have meant the maximum value of `u32`: `u32::MAX`
+   |         ^ cannot apply unary operator `-`
    |
    = note: unsigned values cannot be negated
+help: you may have meant the maximum value of `u32`
+   |
+22 |     B = u32::MAX1,
+   |         ~~~~~~~~

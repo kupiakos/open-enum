@@ -3,3 +3,17 @@ error[E0308]: mismatched types
    |
 20 |     X = u8::MAX,
    |         ^^^^^^^ expected `isize`, found `u8`
+
+error[E0308]: mismatched types
+  --> tests/ui/types.rs:20:9
+   |
+19 | enum InterpretsAsIsize {
+   |      ----------------- arguments to this struct are incorrect
+20 |     X = u8::MAX,
+   |         ^^ expected `isize`, found `u8`
+   |
+note: tuple struct defined here
+  --> tests/ui/types.rs:19:6
+   |
+19 | enum InterpretsAsIsize {
+   |      ^^^^^^^^^^^^^^^^^

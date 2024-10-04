@@ -17,6 +17,7 @@ extern crate proc_macro;
 mod config;
 mod discriminant;
 mod repr;
+mod variants;
 
 use config::Config;
 
@@ -29,6 +30,7 @@ use syn::Attribute;
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
 };
+use variants::{OpenEnumVariants, Variant};
 
 /// Sets the span for every token tree in the token stream
 fn set_token_stream_span(tokens: TokenStream, span: Span) -> TokenStream {
@@ -100,6 +102,32 @@ fn emit_debug_impl<'a>(
             fmt.pad(s)
         }
     })
+}
+
+fn path_matches_any_of_our_derives(got_path: &syn::Path, our_derives: &[&str]) -> bool {
+    if got_path.segments.len() > 3 {
+        return false;
+    }
+    let mut first_3: [Option<&str>; 3] = [None; 3];
+    let segment_strings = got_path
+        .segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>();
+    for (arr, string) in first_3.iter_mut().zip(segment_strings.iter()) {
+        *arr = Some(&*string);
+    }
+
+    match first_3 {
+        [Some(""), Some("open_enum"), Some(end)]
+        | [Some("open_enum"), Some(end), ..]
+        | [Some(end), ..]
+            if our_derives.contains(&end) =>
+        {
+            true
+        }
+        _ => false,
+    }
 }
 
 fn path_matches_prelude_derive(
@@ -174,6 +202,9 @@ fn open_enum_impl(
     let mut extra_derives = vec![quote!(::core::cmp::PartialEq), quote!(::core::cmp::Eq)];
 
     let mut make_custom_debug_impl = false;
+    let mut should_emit_repr_helper = false;
+    let mut should_emit_variants_helper = false;
+    let mut should_emit_alias_helper = false;
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
@@ -198,6 +229,16 @@ fn open_enum_impl(
                             make_custom_debug_impl = true;
                             // Don't include this derive since we're generating a special one.
                             continue;
+                        }
+                        if path_matches_any_of_our_derives(
+                            derive,
+                            &["ToRepr", "FromRepr", "TryFromKnownRepr"],
+                        ) {
+                            should_emit_repr_helper = true;
+                        }
+                        if path_matches_any_of_our_derives(derive, &["TryFromKnownRepr"]) {
+                            should_emit_variants_helper = true;
+                            should_emit_alias_helper = true;
                         }
                         extra_derives.push(derive.to_token_stream());
                     }
@@ -241,6 +282,32 @@ fn open_enum_impl(
 
     if !extra_derives.is_empty() {
         struct_attrs.push(quote!(#[derive(#(#extra_derives),*)]));
+    }
+
+    // helper attrs must come after the derives due to https://github.com/rust-lang/rust/issues/79202
+    if should_emit_repr_helper {
+        struct_attrs.push(quote!(#[open_enum_repr(#explicit_repr)]));
+    }
+    if should_emit_variants_helper {
+        let inner = OpenEnumVariants {
+            variants: variants
+                .iter()
+                .map(|(ident, _, _, attrs)| Variant {
+                    ident: (*ident).clone(),
+                    cfg_attrs: attrs
+                        .iter()
+                        .filter(|attr| attr.path().is_ident("cfg"))
+                        .cloned()
+                        .collect(),
+                })
+                .collect(),
+        };
+        struct_attrs.push(quote!(#[open_enum_variants(#inner)]));
+    }
+    if should_emit_alias_helper {
+        if allow_alias {
+            struct_attrs.push(quote!(#[open_enum_allow_alias]));
+        }
     }
 
     let alias_check = if allow_alias {
@@ -302,6 +369,154 @@ pub fn open_enum(
     open_enum_impl(enum_, config)
         .unwrap_or_else(Error::into_compile_error)
         .into()
+}
+
+fn extract_repr(source_macro_name: &str, attrs: &[Attribute]) -> Result<Repr, Error> {
+    attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("open_enum_repr"))
+        .ok_or_else(|| {
+            Error::new(
+                Span::call_site(),
+                "Could not find `open_enum_repr` helper attribute, did you forget to use \
+            the main `#[open_enum]` attribute macro?",
+            )
+        })?
+        .parse_args::<Repr>()
+        .map_err(|_| {
+            Error::new(
+                Span::call_site(),
+                format!(
+                    "`{}` derive requires explicit `repr(Int)`",
+                    source_macro_name
+                ),
+            )
+        })
+}
+
+#[proc_macro_derive(FromRepr, attributes(open_enum_repr))]
+pub fn from_repr(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+
+    from_repr_impl(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+fn from_repr_impl(input: syn::DeriveInput) -> Result<TokenStream, Error> {
+    let inner_repr = extract_repr("FromRepr", &input.attrs)?;
+
+    let ident = input.ident;
+
+    Ok(quote! {
+        impl ::core::convert::From<#inner_repr> for #ident {
+            #[inline(always)]
+            fn from(r: #inner_repr) -> Self {
+                Self(r)
+            }
+        }
+    })
+}
+
+#[proc_macro_derive(ToRepr, attributes(open_enum_repr))]
+pub fn to_repr(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+
+    to_repr_impl(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+fn to_repr_impl(input: syn::DeriveInput) -> Result<TokenStream, Error> {
+    let inner_repr = extract_repr("ToRepr", &input.attrs)?;
+
+    let ident = input.ident;
+
+    Ok(quote! {
+        impl ::core::convert::From<#ident> for #inner_repr {
+            #[inline(always)]
+            fn from(outer: #ident) -> Self {
+                outer.0
+            }
+        }
+    })
+}
+
+fn extract_variants(attrs: &[Attribute]) -> Result<OpenEnumVariants, Error> {
+    attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("open_enum_variants"))
+        .ok_or_else(|| {
+            Error::new(
+                Span::call_site(),
+                "couldn't find internal open_enum_variants attribute, this is a bug...",
+            )
+        })?
+        .parse_args::<OpenEnumVariants>()
+        .map_err(|mut e| {
+            e.combine(Error::new(
+                Span::call_site(),
+                "failed to parse internal `open_enum_variants()` attr, this is a bug...",
+            ));
+            e
+        })
+}
+
+#[proc_macro_derive(
+    TryFromKnownRepr,
+    attributes(open_enum_repr, open_enum_variants, open_enum_allow_alias)
+)]
+pub fn try_from_known_repr(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as syn::DeriveInput);
+
+    try_from_known_repr_impl(input)
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
+}
+
+fn try_from_known_repr_impl(input: syn::DeriveInput) -> Result<TokenStream, Error> {
+    if input
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("open_enum_allow_alias"))
+    {
+        return Err(Error::new(
+            Span::call_site(),
+            "`TryFromKnownRepr` is incompatible with the `allow_alias` option",
+        ));
+    }
+
+    let inner_repr = extract_repr("TryFromKnownRepr", &input.attrs)?;
+
+    let OpenEnumVariants { variants } = extract_variants(&input.attrs)?;
+    if variants.is_empty() {
+        return Err(Error::new_spanned(
+            &input.ident,
+            "`TryFromKnownRepr` requires at least one known variant.",
+        ));
+    }
+
+    let (each_variant_ident, each_variant_attrs): (Vec<_>, Vec<_>) =
+        variants.into_iter().map(|v| (v.ident, v.cfg_attrs)).unzip();
+    let ident = input.ident;
+
+    Ok(quote! {
+        impl ::core::convert::TryFrom<#inner_repr> for #ident {
+            type Error = ::open_enum::UnknownVariantError;
+            fn try_from(r: #inner_repr) -> ::core::result::Result<Self, Self::Error> {
+                let maybe_self = Self(r);
+                #[deny(unreachable_patterns)]
+                match maybe_self {
+                    #(
+                        #(#each_variant_attrs)*
+                        Self::#each_variant_ident => ::core::result::Result::Ok(maybe_self),
+                    )*
+                    #[allow(unreachable_patterns)]
+                    _ => ::core::result::Result::Err(::open_enum::UnknownVariantError),
+                }
+            }
+        }
+    })
 }
 
 #[cfg(test)]

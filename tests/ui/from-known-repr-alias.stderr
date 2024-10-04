@@ -1,0 +1,7 @@
+error: `TryFromKnownRepr` is incompatible with the `allow_alias` option
+  --> tests/ui/from-known-repr-alias.rs:20:10
+   |
+20 | #[derive(TryFromKnownRepr)]
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `TryFromKnownRepr` (in Nightly builds, run with -Z macro-backtrace for more info)
