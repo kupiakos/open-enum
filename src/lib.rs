@@ -113,6 +113,7 @@
 //! assert_eq!(blood_of_angry_men, Color::Green);
 //!
 //! ```
+
 //!
 //! ## Integer type
 //! `open_enum` will automatically determine an appropriately sized integer[^its-all-isize] to
@@ -231,6 +232,25 @@
 //! # }
 //! ```
 //!
+//! # Custom <&str>::try_from() implementation
+//!
+//! `open_enum` can generate an implementation of `TryFrom<EnumType> for
+//! &'static str`. This is useful when a human-readable string is needed, but
+//! the caller can't afford a runtime dependency on core::fmt.
+//!
+//! ```
+//! # use open_enum::{open_enum, VariantNotDefinedErr};
+//! #[open_enum]
+//! #[derive(TryIntoStr)]
+//! enum Shape2d {
+//!     Square = 0,
+//!     Circle = 1,
+//! }
+//! assert_eq!(Shape2d::Square.try_into(), Ok("Square"));
+//! assert_eq!(<&str>::try_from(Shape2d::Circle), Ok("Circle"));
+//! assert_eq!(<&str>::try_from(Shape2d(55)), Err(VariantNotDefinedErr));
+//! ```
+//!
 //! # Compared with `#[non_exhuastive]`
 //! The [`non_exhaustive`][non-exhaustive] attribute indicates that a type or variant
 //! may have more fields or variants added in the future. When applied to an `enum` (not its variants),
@@ -294,6 +314,16 @@
 /// # `PartialEq`/`Eq`
 /// Open enums implement `PartialEq` and `Eq` in order to work in a `match` statement.
 pub use open_enum_derive::open_enum;
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VariantNotDefinedErr;
+#[cfg(feature = "std")]
+impl std::error::Error for VariantNotDefinedErr {}
+impl core::fmt::Display for VariantNotDefinedErr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("variant not defined")
+    }
+}
 
 /// Utility items only to be used by macros. Do not expect API stability.
 #[doc(hidden)]
