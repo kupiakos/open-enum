@@ -75,6 +75,20 @@ enum Color2 {
     Violet,
 }
 
+#[open_enum]
+#[derive(TryIntoStr)]
+enum Shape2d {
+    Square = 0,
+    Circle = 1,
+}
+
+#[open_enum]
+#[derive(TryIntoStr, Debug)]
+enum Shape3d {
+    Cube = 0,
+    Sphere = 1,
+}
+
 #[test]
 fn values() {
     assert_eq!(Fruit::Apple.0, 0);
@@ -204,4 +218,35 @@ fn empty_enum() {
 
     // Current impl falls back to `isize` - this is not guaranteed.
     assert_eq!(Empty(10).0, 10);
+}
+
+#[test]
+fn try_into_str() {
+    assert_eq!(<&str>::try_from(Shape2d::Circle), Ok("Circle"));
+    assert_eq!(Shape2d::Circle.try_into(), Ok("Circle"));
+    assert_eq!(Shape2d::Square.try_into(), Ok("Square"));
+    assert_eq!(<&str>::try_from(Shape2d(55)), Err(VariantNotDefinedErr));
+
+    assert_eq!(<&str>::try_from(&Shape2d::Circle), Ok("Circle"));
+    assert_eq!((&Shape2d::Circle).try_into(), Ok("Circle"));
+    assert_eq!((&Shape2d::Square).try_into(), Ok("Square"));
+    assert_eq!(<&str>::try_from(&Shape2d(55)), Err(VariantNotDefinedErr));
+}
+
+#[test]
+fn try_into_str_and_debug() {
+    assert_eq!(Ok("Sphere"), <&str>::try_from(Shape3d::Sphere));
+    assert_eq!(Ok("Sphere"), Shape3d::Sphere.try_into());
+    assert_eq!(Ok("Cube"), Shape3d::Cube.try_into());
+    assert_eq!(Err(VariantNotDefinedErr), <&str>::try_from(Shape3d(55)));
+
+    assert_eq!(Ok("Sphere"), <&str>::try_from(&Shape3d::Sphere));
+    assert_eq!(Ok("Sphere"), (&Shape3d::Sphere).try_into());
+    assert_eq!(Ok("Cube"), (&Shape3d::Cube).try_into());
+    assert_eq!(Err(VariantNotDefinedErr), <&str>::try_from(&Shape3d(55)));
+
+    // Make sure Debug still works (it's now delegating to try_into_str)
+    assert_eq!(format!("{:?}", Shape3d::Cube), "Cube");
+    assert_eq!(format!("{:?}", Shape3d::Sphere), "Sphere");
+    assert_eq!(format!("{:?}", Shape3d(42)), "Shape3d(42)");
 }

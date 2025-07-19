@@ -25,7 +25,6 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use repr::Repr;
 use std::collections::HashSet;
-use syn::Attribute;
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
 };
@@ -81,13 +80,8 @@ fn check_no_alias<'a>(
 fn emit_debug_impl<'a>(
     ident: &Ident,
     variants: impl Iterator<Item = &'a Ident> + Clone,
-    attrs: impl Iterator<Item = &'a Vec<Attribute>> + Clone,
+    attrs: impl Iterator<Item = TokenStream> + Clone,
 ) -> TokenStream {
-    let attrs = attrs.map(|attrs| {
-        // Only allow "#[cfg(...)]" attributes
-        let iter = attrs.iter().filter(|attr| attr.path().is_ident("cfg"));
-        quote!(#(#iter)*)
-    });
     quote!(impl ::core::fmt::Debug for #ident {
         fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
             #![allow(unreachable_patterns)]
@@ -100,6 +94,45 @@ fn emit_debug_impl<'a>(
             fmt.pad(s)
         }
     })
+}
+fn emit_debug_impl_with_try_into(ident: &Ident) -> TokenStream {
+    quote!(impl ::core::fmt::Debug for #ident {
+        fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+            match <&str as ::core::convert::TryFrom<&#ident>>::try_from(self) {
+                Ok(s) => fmt.write_str(s),
+                Err(_) => fmt.debug_tuple(stringify!(#ident)).field(&self.0).finish(),
+            }
+        }
+    })
+}
+
+fn emit_try_into_str_impl<'a>(
+    ident: &Ident,
+    variants: impl Iterator<Item = &'a Ident> + Clone,
+    attrs: impl Iterator<Item = TokenStream> + Clone,
+) -> TokenStream {
+    quote! {
+        // Converting from reference is necessary because this enum may not have
+        // derived Copy, and the Debug implementation can't copy.
+        impl ::core::convert::TryFrom<&#ident> for &'static str {
+            type Error = ::open_enum::VariantNotDefinedErr;
+
+            fn try_from(value: &#ident) -> ::core::result::Result<&'static str, Self::Error> {
+                #![allow(unreachable_patterns)]
+                match *value {
+                    #( #attrs #ident::#variants => ::core::result::Result::Ok(stringify!(#variants)), )*
+                    _ => ::core::result::Result::Err(::open_enum::VariantNotDefinedErr),
+                }
+            }
+        }
+        impl ::core::convert::TryFrom<#ident> for &'static str {
+            type Error = ::open_enum::VariantNotDefinedErr;
+
+            fn try_from(value: #ident) -> ::core::result::Result<&'static str, Self::Error> {
+                ::core::convert::TryFrom::<&#ident>::try_from(&value)
+            }
+        }
+    }
 }
 
 fn path_matches_prelude_derive(
@@ -174,6 +207,7 @@ fn open_enum_impl(
     let mut extra_derives = vec![quote!(::core::cmp::PartialEq), quote!(::core::cmp::Eq)];
 
     let mut make_custom_debug_impl = false;
+    let mut make_try_into_str_impl = false;
     for attr in &enum_.attrs {
         let mut include_in_struct = true;
         // Turns out `is_ident` does a `to_string` every time
@@ -187,6 +221,7 @@ fn open_enum_impl(
                         const PARTIAL_EQ_PATH: &[&str] = &["cmp", "PartialEq"];
                         const EQ_PATH: &[&str] = &["cmp", "Eq"];
                         const DEBUG_PATH: &[&str] = &["fmt", "Debug"];
+                        const TRY_INTO: &[&str] = &["convert", "TryIntoStr"];
 
                         if path_matches_prelude_derive(derive, PARTIAL_EQ_PATH)
                             || path_matches_prelude_derive(derive, EQ_PATH)
@@ -196,6 +231,11 @@ fn open_enum_impl(
                         }
                         if path_matches_prelude_derive(derive, DEBUG_PATH) && !allow_alias {
                             make_custom_debug_impl = true;
+                            // Don't include this derive since we're generating a special one.
+                            continue;
+                        }
+                        if path_matches_prelude_derive(derive, TRY_INTO) {
+                            make_try_into_str_impl = true;
                             // Don't include this derive since we're generating a special one.
                             continue;
                         }
@@ -251,12 +291,23 @@ fn open_enum_impl(
 
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
-    let debug_impl = if make_custom_debug_impl {
-        emit_debug_impl(
-            &ident,
-            variants.iter().map(|(i, _, _, _)| *i),
-            variants.iter().map(|(_, _, _, a)| *a),
-        )
+    let variant_idents = || variants.iter().map(|(i, _, _, _)| *i);
+    let variant_attrs = || {
+        variants.iter().map(|(_, _, _, a)| *a).map(|attrs| {
+            // Only allow "#[cfg(...)]" attributes
+            let iter = attrs.iter().filter(|attr| attr.path().is_ident("cfg"));
+            quote!(#(#iter)*)
+        })
+    };
+
+    let debug_impl = match (make_custom_debug_impl, make_try_into_str_impl) {
+        (false, _) => TokenStream::default(),
+        (true, false) => emit_debug_impl(&ident, variant_idents(), variant_attrs()),
+        (true, true) => emit_debug_impl_with_try_into(&ident),
+    };
+
+    let try_into_str_impl = if make_try_into_str_impl {
+        emit_try_into_str_impl(&ident, variant_idents(), variant_attrs())
     } else {
         TokenStream::default()
     };
@@ -288,6 +339,7 @@ fn open_enum_impl(
             )*
         }
         #debug_impl
+        #try_into_str_impl
         #alias_check
     })
 }
