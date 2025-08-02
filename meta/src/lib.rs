@@ -1,3 +1,9 @@
+mod discriminant;
+mod repr;
+
+pub use discriminant::Discriminant;
+pub use repr::Repr;
+
 use proc_macro2::Ident;
 use quote::quote;
 use quote::ToTokens;
@@ -11,9 +17,6 @@ use syn::Error;
 use syn::Expr;
 use syn::LitStr;
 use syn::Path;
-
-use crate::Discriminant;
-use crate::Repr;
 
 pub struct Metadata {
     pub repr: Repr,

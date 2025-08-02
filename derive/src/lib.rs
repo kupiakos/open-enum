@@ -15,24 +15,22 @@
 extern crate proc_macro;
 
 mod config;
-mod discriminant;
-mod meta;
 mod repr;
 
 use config::Config;
 
-use discriminant::Discriminant;
+use open_enum_meta::Discriminant;
+use open_enum_meta::Metadata;
+use open_enum_meta::Repr;
+use open_enum_meta::Variant;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use repr::Repr;
 use std::collections::HashSet;
 
 use syn::Attribute;
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
 };
-
-use crate::meta::{Metadata, Variant};
 
 /// Sets the span for every token tree in the token stream
 fn set_token_stream_span(tokens: TokenStream, span: Span) -> TokenStream {

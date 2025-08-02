@@ -1,0 +1,19 @@
+[package]
+name = "open-enum-meta"
+version = "0.5.2"
+description = "Types for parsing #[open_enum_meta] attributes in custom derives"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/kupiakos/open-enum/tree/main/meta"
+categories = ["no-std", "rust-patterns"]
+keywords = ["enum", "open", "integer", "newtype"]
+include = ["/src", "LICENSE", "Cargo.toml"]
+
+[dependencies]
+syn = { version = "2", features = ["full", "extra-traits"] }
+quote = "1"
+proc-macro2 = "1.0.43"
+
+[features]
+# Enable #[repr(C)] open enums
+repr_c = []
