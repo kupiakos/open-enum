@@ -15,16 +15,18 @@
 extern crate proc_macro;
 
 mod config;
-mod discriminant;
 mod repr;
 
 use config::Config;
 
-use discriminant::Discriminant;
+use open_enum_meta::Discriminant;
+use open_enum_meta::Metadata;
+use open_enum_meta::Repr;
+use open_enum_meta::Variant;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use repr::Repr;
 use std::collections::HashSet;
+
 use syn::Attribute;
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Error, Ident, ItemEnum, Visibility,
@@ -171,7 +173,11 @@ fn open_enum_impl(
     let mut explicit_repr: Option<Repr> = None;
 
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
-    let mut extra_derives = vec![quote!(::core::cmp::PartialEq), quote!(::core::cmp::Eq)];
+    let mut extra_derives = vec![
+        quote!(::core::cmp::PartialEq),
+        quote!(::core::cmp::Eq),
+        quote!(::open_enum::OpenEnum),
+    ];
 
     let mut make_custom_debug_impl = false;
     for attr in &enum_.attrs {
@@ -242,7 +248,6 @@ fn open_enum_impl(
     if !extra_derives.is_empty() {
         struct_attrs.push(quote!(#[derive(#(#extra_derives),*)]));
     }
-
     let alias_check = if allow_alias {
         TokenStream::default()
     } else {
@@ -260,6 +265,20 @@ fn open_enum_impl(
     } else {
         TokenStream::default()
     };
+
+    let meta = Metadata {
+        repr: inner_repr,
+        variants: variants
+            .iter()
+            .map(|(ident, value, _, attrs)| Variant {
+                ident: (**ident).clone(),
+                name: ident.to_string(),
+                value: value.clone(),
+                attrs: attrs.to_vec(),
+            })
+            .collect(),
+    };
+    struct_attrs.push(meta.into_token_stream());
 
     let fields = variants
         .into_iter()
@@ -302,6 +321,12 @@ pub fn open_enum(
     open_enum_impl(enum_, config)
         .unwrap_or_else(Error::into_compile_error)
         .into()
+}
+
+#[proc_macro_derive(OpenEnum, attributes(open_enum_meta))]
+pub fn proc_macro(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // This is a dummy derive, just to allow open_enum_meta to exist...
+    proc_macro::TokenStream::new()
 }
 
 #[cfg(test)]

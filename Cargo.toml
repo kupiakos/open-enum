@@ -30,4 +30,4 @@ trybuild = "1"
 zerocopy = { version = "0.7.11", features = ["derive"] }
 
 [workspace]
-members = ["derive"]
+members = ["derive", "meta"]
