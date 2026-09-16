@@ -158,6 +158,7 @@ fn open_enum_impl(
 
     // To make `match` seamless, derive(PartialEq, Eq) if they aren't already.
     let mut extra_derives = vec![quote!(::core::cmp::PartialEq), quote!(::core::cmp::Eq)];
+    let mut extra_attrs: Vec<TokenStream> = Vec::with_capacity(enum_.attrs.len());
 
     let mut make_custom_debug_impl = false;
     for attr in &enum_.attrs {
@@ -204,7 +205,7 @@ fn open_enum_impl(
             _ => {}
         }
         if include_in_struct {
-            struct_attrs.push(attr.to_token_stream());
+            extra_attrs.push(attr.to_token_stream());
         }
     }
 
@@ -228,6 +229,7 @@ fn open_enum_impl(
     if !extra_derives.is_empty() {
         struct_attrs.push(quote!(#[derive(#(#extra_derives),*)]));
     }
+    struct_attrs.append(&mut extra_attrs);
 
     let alias_check = if allow_alias {
         TokenStream::default()
