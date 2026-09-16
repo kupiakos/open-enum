@@ -5,3 +5,11 @@ error[E0370]: enum discriminant overflowed
    |     ^ overflowed on value after 255
    |
    = note: explicitly set `C = 0` if that is desired outcome
+
+error: this arithmetic operation will overflow
+  --> tests/ui/nonliteral-overflow.rs:22:5
+   |
+22 |     C,
+   |     ^ attempt to compute `254_u8 + 2_u8`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default

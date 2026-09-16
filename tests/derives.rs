@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// `ColorWithFeatures` below intentionally uses a nonexistent `orange` feature to
+// check that `#[cfg(...)]` is propagated to the generated items.
+#![allow(unexpected_cfgs)]
+
 extern crate open_enum;
 use open_enum::*;
 
