@@ -3,17 +3,11 @@
 We'd love to accept your patches and contributions to this project. There are
 just a few small guidelines you need to follow.
 
-## Contributor License Agreement
+## Licensing
 
-Contributions to this project must be accompanied by a Contributor License
-Agreement. You (or your employer) retain the copyright to your contribution;
-this simply gives us permission to use and redistribute your contributions as
-part of the project. Head over to <https://cla.developers.google.com/> to see
-your current agreements on file or to sign a new one.
-
-You generally only need to submit a CLA once, so if you've already submitted one
-(even if it was for a different project), you probably don't need to do it
-again.
+Contributions are accepted under the same Apache-2.0 license as the rest of the
+project; see [`LICENSE`](LICENSE). You retain the copyright to your
+contribution.
 
 ## Code Reviews
 
@@ -24,5 +18,4 @@ information on using pull requests.
 
 ## Community Guidelines
 
-This project follows [Google's Open Source Community
-Guidelines](https://opensource.google/conduct/).
+This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).

@@ -1,11 +1,11 @@
 error: discriminant value `1` assigned more than once
-  --> tests/ui/duplicate.rs:22:9
-   |
-22 |     C = 1,
-   |         ^
+ --> tests/ui/duplicate.rs:8:9
+  |
+8 |     C = 1,
+  |         ^
 
 error: discriminant value `0` assigned more than once
-  --> tests/ui/duplicate.rs:29:5
+  --> tests/ui/duplicate.rs:15:5
    |
-29 |     C,
+15 |     C,
    |     ^
