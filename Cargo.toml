@@ -1,14 +1,14 @@
 [package]
 name = "open-enum"
 version = "0.5.2"
-authors = ["Alyssa Haroldsen <kupiakos@google.com>"]
+authors = ["Alyssa Haroldsen <kupiakos@gmail.com>"]
 description = "An attribute for generating \"open\" fieldless enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/kupiakos/open-enum"
 categories = ["no-std", "rust-patterns"]
 keywords = ["enum", "open", "integer", "newtype"]
-include = ["/src", "/LICENSE", "Cargo.toml"]
+include = ["/src", "/LICENSE", "/NOTICE", "Cargo.toml"]
 
 [features]
 # This is not named libc because it would require "dep:libc",

@@ -1,41 +1,41 @@
 error: enum cannot contain fields
-  --> tests/ui/basic.rs:23:5
-   |
-23 |     Green(u32),
-   |     ^^^^^
+ --> tests/ui/basic.rs:9:5
+  |
+9 |     Green(u32),
+  |     ^^^^^
 
 error: enum cannot contain fields
-  --> tests/ui/basic.rs:29:5
+  --> tests/ui/basic.rs:15:5
    |
-29 |     Bin { field: u32 },
+15 |     Bin { field: u32 },
    |     ^^^
 
 error: unsupported repr `u128`
-  --> tests/ui/basic.rs:35:8
+  --> tests/ui/basic.rs:21:8
    |
-35 | #[repr(u128)]
+21 | #[repr(u128)]
    |        ^^^^
 
 error: unsupported repr `i128`
-  --> tests/ui/basic.rs:43:8
+  --> tests/ui/basic.rs:29:8
    |
-43 | #[repr(i128)]
+29 | #[repr(i128)]
    |        ^^^^
 
 error: enum cannot be generic
-  --> tests/ui/basic.rs:51:7
+  --> tests/ui/basic.rs:37:7
    |
-51 | enum C<T> {
+37 | enum C<T> {
    |       ^
 
 error: Unknown option `foo`
-  --> tests/ui/basic.rs:57:13
+  --> tests/ui/basic.rs:43:13
    |
-57 | #[open_enum(foo)]
+43 | #[open_enum(foo)]
    |             ^^^
 
 error: `non_exhaustive` cannot be applied to an open enum; it is already non-exhaustive
-  --> tests/ui/basic.rs:61:3
+  --> tests/ui/basic.rs:47:3
    |
-61 | #[non_exhaustive]
+47 | #[non_exhaustive]
    |   ^^^^^^^^^^^^^^

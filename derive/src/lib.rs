@@ -1,17 +1,3 @@
-// Copyright 2022 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 extern crate proc_macro;
 
 mod config;
@@ -59,7 +45,7 @@ fn check_no_alias<'a>(
             }
         } else {
             let mut checking_enum = syn::ItemEnum {
-                ident: format_ident!("_Check{}", enum_.ident),
+                ident: format_ident!("_Check{}", enum_.ident, span = Span::call_site()),
                 vis: Visibility::Inherited,
                 ..enum_.clone()
             };
@@ -253,9 +239,19 @@ fn open_enum_impl(
 
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
+    // If we use the original ident's span in more than one location,
+    // rust-analyzer will duplicate `pub struct EnumName` items when hovering
+    // over the `enum EnumName`. By only using the input name's span once, we
+    // only get one expansion. This is in exchange for marginally worse errors.
+    let ident_nospan = {
+        let mut ident_nospan = ident.clone();
+        ident_nospan.set_span(Span::call_site());
+        ident_nospan
+    };
+
     let debug_impl = if make_custom_debug_impl {
         emit_debug_impl(
-            &ident,
+            &ident_nospan,
             variants.iter().map(|(i, _, _, _)| *i),
             variants.iter().map(|(_, _, _, a)| *a),
         )
@@ -275,7 +271,7 @@ fn open_enum_impl(
             };
             quote!(
                 #(#attrs)*
-                pub const #name: #ident = #ident(#inner);
+                pub const #name: #ident_nospan = #ident_nospan(#inner);
             )
         });
 
@@ -284,7 +280,7 @@ fn open_enum_impl(
         #vis struct #ident(#repr_visibility #inner_repr);
 
         #(#impl_attrs)*
-        impl #ident {
+        impl #ident_nospan {
             #(
                 #fields
             )*
