@@ -251,9 +251,19 @@ fn open_enum_impl(
 
     let syn::ItemEnum { ident, vis, .. } = enum_;
 
+    // If we use the original ident's span in more than one location,
+    // rust-analyzer will duplicate `pub struct EnumName` items when hovering
+    // over the `enum EnumName`. By only using the input name's span once, we
+    // only get one expansion. This is in exchange for marginally worse errors.
+    let ident_nospan = {
+        let mut ident_nospan = ident.clone();
+        ident_nospan.set_span(Span::call_site());
+        ident_nospan
+    };
+
     let debug_impl = if make_custom_debug_impl {
         emit_debug_impl(
-            &ident,
+            &ident_nospan,
             variants.iter().map(|(i, _, _, _)| *i),
             variants.iter().map(|(_, _, _, a)| *a),
         )
@@ -273,7 +283,7 @@ fn open_enum_impl(
             };
             quote!(
                 #(#attrs)*
-                pub const #name: #ident = #ident(#inner);
+                pub const #name: #ident_nospan = #ident_nospan(#inner);
             )
         });
 
@@ -282,7 +292,7 @@ fn open_enum_impl(
         #vis struct #ident(#repr_visibility #inner_repr);
 
         #(#impl_attrs)*
-        impl #ident {
+        impl #ident_nospan {
             #(
                 #fields
             )*
