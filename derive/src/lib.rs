@@ -59,7 +59,7 @@ fn check_no_alias<'a>(
             }
         } else {
             let mut checking_enum = syn::ItemEnum {
-                ident: format_ident!("_Check{}", enum_.ident),
+                ident: format_ident!("_Check{}", enum_.ident, span = Span::call_site()),
                 vis: Visibility::Inherited,
                 ..enum_.clone()
             };
