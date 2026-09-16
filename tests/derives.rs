@@ -4,6 +4,7 @@
 
 extern crate open_enum;
 use open_enum::*;
+use test_derive_helper_attr::WithTestAttr;
 
 #[open_enum]
 #[derive(
@@ -88,3 +89,9 @@ fn extended_embedded_enum_struct_debug() {
     );
     assert!(debug_str.contains("Red"), "{debug_str}");
 }
+
+// Fails to build if test_attr is re-ordered above derive attrs.
+#[open_enum]
+#[derive(WithTestAttr)]
+#[test_attr]
+enum AttrOrder {}
