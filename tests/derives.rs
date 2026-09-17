@@ -7,7 +7,7 @@ use open_enum::*;
 
 #[open_enum]
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+    Debug, Clone, Copy, PartialEq, Eq, zerocopy::IntoBytes, zerocopy::FromBytes, zerocopy::Immutable,
 )]
 #[repr(u32)]
 pub enum Color {
@@ -33,9 +33,9 @@ pub enum ColorWithFeatures {
     ::core::marker::Copy,
     std::cmp::PartialEq,
     ::core::cmp::Eq,
-    zerocopy::AsBytes,
+    zerocopy::IntoBytes,
     ::zerocopy::FromBytes,
-    zerocopy::FromZeroes,
+    zerocopy::Immutable,
 )]
 #[repr(u32)]
 pub enum ColorWithNonPreludeDerives {
@@ -45,7 +45,7 @@ pub enum ColorWithNonPreludeDerives {
 
 // Ensure that `Color` actually implements the `derive`d traits.
 #[derive(
-    Debug, Copy, Clone, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+    Debug, Copy, Clone, PartialEq, Eq, zerocopy::IntoBytes, zerocopy::FromBytes, zerocopy::Immutable,
 )]
 #[repr(C)]
 pub struct EmbedColor {
@@ -53,7 +53,7 @@ pub struct EmbedColor {
 }
 
 #[derive(
-    Debug, Copy, Clone, PartialEq, Eq, zerocopy::AsBytes, zerocopy::FromBytes, zerocopy::FromZeroes,
+    Debug, Copy, Clone, PartialEq, Eq, zerocopy::IntoBytes, zerocopy::FromBytes, zerocopy::Immutable,
 )]
 #[repr(C)]
 pub struct EmbedColorWithNonPreludeDerives {

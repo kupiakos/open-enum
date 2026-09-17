@@ -325,8 +325,8 @@ mod tests {
         for fail_case in [
             "::fmt::Debug",
             "::Debug",
-            "zerocopy::AsBytes",
-            "::zerocopy::AsBytes",
+            "zerocopy::IntoBytes",
+            "::zerocopy::IntoBytes",
             "PartialEq",
             "core::cmp::Eq",
         ] {
