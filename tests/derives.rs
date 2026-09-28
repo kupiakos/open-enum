@@ -4,7 +4,6 @@
 
 extern crate open_enum;
 use open_enum::*;
-use test_derive_helper_attr::WithTestAttr;
 
 #[open_enum]
 #[derive(
@@ -91,7 +90,8 @@ fn extended_embedded_enum_struct_debug() {
 }
 
 // Fails to build if test_attr is re-ordered above derive attrs.
+#[repr(u8)]
 #[open_enum]
-#[derive(WithTestAttr)]
-#[test_attr]
+#[derive(zerocopy::IntoBytes)]
+#[zerocopy(crate = "zerocopy")]
 enum AttrOrder {}
