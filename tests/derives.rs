@@ -88,3 +88,10 @@ fn extended_embedded_enum_struct_debug() {
     );
     assert!(debug_str.contains("Red"), "{debug_str}");
 }
+
+// Fails to build if `#[zerocopy(...)]` is re-ordered above derive attrs.
+#[repr(u8)]
+#[open_enum]
+#[derive(zerocopy::IntoBytes)]
+#[zerocopy(crate = "zerocopy")]
+enum AttrOrder {}
