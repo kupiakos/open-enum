@@ -1,13 +1,14 @@
 [package]
 name = "open-enum-derive"
 version = "0.5.2"
+authors = ["Alyssa Haroldsen <kupiakos@gmail.com>"]
 description = "An attribute for generating \"open\" C-like enums, those that accept any integer value, by using a newtype struct and associated constants"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/kupiakos/open-enum/tree/main/derive"
 categories = ["no-std", "rust-patterns"]
 keywords = ["enum", "open", "integer", "newtype"]
-include = ["/src", "LICENSE", "NOTICE", "Cargo.toml"]
+include = ["/src", "/LICENSE", "/NOTICE", "Cargo.toml"]
 
 [lib]
 proc-macro = true
